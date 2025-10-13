@@ -1,0 +1,12 @@
+{
+  "name": "Tomatera – Sector A (Demo)",
+  "timestamp": "2025-10-08T07:45:01Z",
+  "sensors": {
+    "temp_c": 23.7,
+    "hum_pct": 58.2,
+    "soil_moist_pct": 42.5,
+    "lux": 850,
+    "battery_pct": 86
+  },
+  "notes": "Lectura demo para validación de UI."
+}

@@ -1,0 +1,25 @@
+# Certificados SSL (no subir)
+*.pem
+cert.pem
+key.pem
+
+# Python
+*.pyc
+__pycache__/
+venv/
+env/
+
+# Node
+node_modules/
+package-lock.json
+
+# Logs
+*.log
+
+# Sistema
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/

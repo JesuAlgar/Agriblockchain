@@ -1,0 +1,879 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>AR Planta - Detección IA Avanzada</title>
+  
+  <!-- PWA -->
+  <link rel="manifest" href="./manifest.json">
+  <meta name="theme-color" content="#02eef0">
+  <link rel="apple-touch-icon" href="./assets/icon-192.png">
+  
+  <!-- TensorFlow.js y COCO-SSD -->
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.11.0"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd@2.2.3"></script>
+  
+  <style>
+    :root {
+      --bg: #0b0f14;
+      --card: #141a22;
+      --border: #1a2431;
+      --text: #e9f1f7;
+      --muted: #89a2b8;
+      --brand: #02eef0;
+      --brand2: #1625ee;
+      --success: #6bcf7f;
+      --warning: #ffd93d;
+      --danger: #ff6b6b;
+    }
+
+    [data-theme="light"] {
+      --bg: #f0f4f8;
+      --card: #ffffff;
+      --border: #d1dce5;
+      --text: #1a2431;
+      --muted: #6b8299;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    
+    body { 
+      font-family: system-ui, -apple-system, sans-serif;
+      overflow: hidden;
+      height: 100vh;
+      width: 100vw;
+      background: var(--bg);
+      color: var(--text);
+      transition: background 0.3s, color 0.3s;
+    }
+
+    #container {
+      position: relative;
+      width: 100vw;
+      height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+
+    #camera {
+      position: absolute;
+      max-width: 100%;
+      max-height: 100%;
+      object-fit: contain;
+    }
+
+    #canvas {
+      position: absolute;
+      max-width: 100%;
+      max-height: 100%;
+    }
+
+    .header {
+      position: fixed;
+      top: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 100;
+      background: rgba(0, 0, 0, 0.85);
+      backdrop-filter: blur(10px);
+      padding: 12px 20px;
+      border-radius: 20px;
+      border: 1px solid var(--brand);
+      box-shadow: 0 4px 20px rgba(2, 238, 240, 0.2);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      max-width: 90%;
+      animation: slideDown 0.5s ease;
+    }
+
+    @keyframes slideDown {
+      from { transform: translateX(-50%) translateY(-100px); opacity: 0; }
+      to { transform: translateX(-50%) translateY(0); opacity: 1; }
+    }
+
+    .header-info {
+      flex: 1;
+    }
+
+    .header h1 {
+      color: var(--brand);
+      font-size: 14px;
+      font-weight: 700;
+      margin: 0 0 4px 0;
+    }
+
+    .header .status {
+      color: var(--muted);
+      font-size: 11px;
+    }
+
+    .header .status.detecting {
+      color: var(--success);
+    }
+
+    .controls {
+      display: flex;
+      gap: 8px;
+    }
+
+    .btn-control {
+      background: var(--card);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 8px 12px;
+      border-radius: 10px;
+      font-size: 16px;
+      cursor: pointer;
+      transition: all 0.3s;
+    }
+
+    .btn-control:hover {
+      background: var(--brand);
+      color: #000;
+      transform: scale(1.05);
+    }
+
+    .btn-control:active {
+      transform: scale(0.95);
+    }
+
+    /* Panel transparente - solo contenedor de posición */
+    .data-panel {
+      position: absolute;
+      /* SIN fondo, SIN border */
+      background: transparent;
+      border: none;
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      opacity: 0;
+      transform: scale(0.9);
+      transition: all 0.4s ease-out;
+      z-index: 50;
+      pointer-events: none;
+    }
+
+    .data-panel.visible {
+      opacity: 1;
+      transform: scale(1);
+    }
+
+    /* Cada chip de dato individual (flotante) */
+    .data-chip {
+      background: rgba(0, 0, 0, 0.85);
+      backdrop-filter: blur(15px);
+      border: 2px solid var(--brand);
+      border-radius: 16px;
+      padding: 10px 16px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      box-shadow: 0 4px 20px rgba(2, 238, 240, 0.3);
+      transition: all 0.3s;
+      animation: fadeInUp 0.5s ease backwards;
+      min-width: 160px;
+    }
+
+    .data-chip:nth-child(1) { animation-delay: 0.1s; }
+    .data-chip:nth-child(2) { animation-delay: 0.2s; }
+    .data-chip:nth-child(3) { animation-delay: 0.3s; }
+    .data-chip:nth-child(4) { animation-delay: 0.4s; }
+    .data-chip:nth-child(5) { animation-delay: 0.5s; }
+
+    @keyframes fadeInUp {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .data-chip.alert-warning {
+      border-color: var(--warning);
+      box-shadow: 0 4px 20px rgba(255, 217, 61, 0.4);
+      animation: pulse 2s infinite;
+    }
+
+    .data-chip.alert-danger {
+      border-color: var(--danger);
+      box-shadow: 0 4px 20px rgba(255, 107, 107, 0.4);
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.05); }
+    }
+
+    .data-icon {
+      font-size: 20px;
+      flex-shrink: 0;
+    }
+
+    .data-content {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .data-label {
+      color: var(--muted);
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .data-value-container {
+      display: flex;
+      align-items: baseline;
+      gap: 4px;
+    }
+
+    .data-value {
+      color: var(--text);
+      font-size: 18px;
+      font-weight: 700;
+    }
+
+    .data-unit {
+      color: var(--brand);
+      font-size: 12px;
+      font-weight: 600;
+    }
+
+    .data-trend {
+      font-size: 14px;
+      margin-left: 4px;
+    }
+
+    /* Título de la planta (chip separado) */
+    .plant-title {
+      background: rgba(0, 0, 0, 0.9);
+      backdrop-filter: blur(15px);
+      border: 2px solid var(--brand);
+      border-radius: 16px;
+      padding: 10px 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      box-shadow: 0 4px 20px rgba(2, 238, 240, 0.3);
+      margin-bottom: 4px;
+    }
+
+    .plant-name {
+      color: var(--brand);
+      font-size: 13px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .plant-confidence {
+      color: var(--muted);
+      font-size: 11px;
+    }
+
+    /* Alertas flotantes */
+    .alert-banner {
+      position: fixed;
+      top: 80px;
+      left: 50%;
+      transform: translateX(-50%) translateY(-100px);
+      z-index: 150;
+      background: var(--danger);
+      color: #fff;
+      padding: 12px 24px;
+      border-radius: 12px;
+      font-size: 13px;
+      font-weight: 600;
+      box-shadow: 0 4px 20px rgba(255, 107, 107, 0.4);
+      opacity: 0;
+      transition: all 0.5s;
+      max-width: 90%;
+      text-align: center;
+    }
+
+    .alert-banner.show {
+      transform: translateX(-50%) translateY(0);
+      opacity: 1;
+    }
+
+    .alert-banner.warning {
+      background: var(--warning);
+      color: #000;
+    }
+
+    .loading {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      z-index: 200;
+      background: rgba(0, 0, 0, 0.95);
+      color: var(--brand);
+      padding: 32px 40px;
+      border-radius: 20px;
+      text-align: center;
+      font-size: 16px;
+      border: 2px solid var(--brand);
+      box-shadow: 0 8px 40px rgba(2, 238, 240, 0.3);
+    }
+
+    .loading.hidden { display: none; }
+
+    .spinner {
+      width: 50px;
+      height: 50px;
+      border: 4px solid rgba(2, 238, 240, 0.2);
+      border-top-color: var(--brand);
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin: 0 auto 16px;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    .instructions {
+      position: fixed;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 100;
+      background: rgba(2, 238, 240, 0.95);
+      color: #000;
+      padding: 12px 24px;
+      border-radius: 25px;
+      font-size: 13px;
+      font-weight: 600;
+      max-width: 90%;
+      text-align: center;
+      box-shadow: 0 4px 20px rgba(2, 238, 240, 0.3);
+      transition: all 0.3s;
+    }
+
+    .instructions.success {
+      background: rgba(107, 207, 127, 0.95);
+    }
+
+    .btn-fullscreen {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      z-index: 100;
+      background: rgba(0, 0, 0, 0.85);
+      backdrop-filter: blur(10px);
+      border: 1px solid var(--brand);
+      color: var(--brand);
+      width: 50px;
+      height: 50px;
+      border-radius: 50%;
+      font-size: 20px;
+      cursor: pointer;
+      transition: all 0.3s;
+      box-shadow: 0 4px 20px rgba(2, 238, 240, 0.3);
+    }
+
+    .btn-fullscreen:hover {
+      background: var(--brand);
+      color: #000;
+      transform: scale(1.1);
+    }
+
+    .stats {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      z-index: 90;
+      background: rgba(0, 0, 0, 0.8);
+      backdrop-filter: blur(10px);
+      padding: 10px 14px;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      font-size: 11px;
+      color: var(--muted);
+    }
+
+    .stats-item {
+      margin-bottom: 4px;
+    }
+
+    .stats-item:last-child {
+      margin-bottom: 0;
+    }
+
+    .stats-value {
+      color: var(--brand);
+      font-weight: 700;
+    }
+
+    @media (max-width: 768px) {
+      .data-chip {
+        min-width: 140px;
+        padding: 8px 12px;
+      }
+      
+      .stats {
+        top: auto;
+        bottom: 80px;
+        right: 10px;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="header">
+    <div class="header-info">
+      <h1>AR Planta IA</h1>
+      <div class="status" id="status">Inicializando...</div>
+    </div>
+    <div class="controls">
+      <button class="btn-control" id="btnTheme" title="Cambiar tema">🌓</button>
+    </div>
+  </div>
+
+  <div id="container">
+    <video id="camera" autoplay playsinline></video>
+    <canvas id="canvas"></canvas>
+  </div>
+
+  <div class="alert-banner" id="alertBanner"></div>
+
+  <div class="loading" id="loading">
+    <div class="spinner"></div>
+    🤖 Cargando modelo de IA...<br>
+    <small style="color: var(--muted); margin-top: 8px; display: block;">Esto puede tardar unos segundos</small>
+  </div>
+
+  <div class="instructions" id="instructions">
+    📷 Apunta la cámara a plantas en maceta
+  </div>
+
+  <button class="btn-fullscreen" id="btnFullscreen" title="Pantalla completa">⛶</button>
+
+  <div class="stats" id="stats">
+    <div class="stats-item">FPS: <span class="stats-value" id="fps">--</span></div>
+    <div class="stats-item">Plantas: <span class="stats-value" id="plantCount">0</span></div>
+  </div>
+
+  <script>
+    (async function() {
+      // ============ CONFIGURACIÓN ============
+      const CONFIG = {
+        detectionInterval: 300, // ms entre detecciones
+        dataUpdateInterval: 5000, // ms para actualizar datos desde servidor
+        alertThresholds: {
+          temp_c: { min: 15, max: 30 },
+          hum_pct: { min: 40, max: 80 },
+          soil_moist_pct: { min: 30, max: 70 },
+          battery_pct: { min: 20, max: 100 }
+        }
+      };
+
+      // ============ VARIABLES GLOBALES ============
+      const params = new URLSearchParams(location.search);
+      const defaultId = params.get('id') || 'planta01';
+
+      const video = document.getElementById('camera');
+      const canvas = document.getElementById('canvas');
+      const ctx = canvas.getContext('2d');
+      const container = document.getElementById('container');
+
+      let model = null;
+      let lastDetectionTime = 0;
+      let plantDataCache = new Map(); // Map<plantIndex, {data, lastUpdate}>
+      let detectionCount = 0;
+      let frameCount = 0;
+      let lastFpsTime = Date.now();
+      let currentTheme = 'dark';
+      let alertShown = new Set();
+
+      // ============ DATOS DE FALLBACK ============
+      const fallbackData = {
+        "name": "Planta Detectada",
+        "timestamp": new Date().toISOString(),
+        "sensors": { 
+          "temp_c": 22.4, 
+          "hum_pct": 55.0, 
+          "soil_moist_pct": 40.0, 
+          "lux": 700, 
+          "battery_pct": 90 
+        }
+      };
+
+      // ============ UTILIDADES ============
+      function fmt(n, decimals = 1) {
+        if (n === undefined || n === null || Number.isNaN(n)) return '--';
+        return Number(n).toFixed(decimals);
+      }
+
+      function getTrend(current, previous) {
+        if (previous === undefined || previous === null) return '→';
+        const diff = current - previous;
+        if (Math.abs(diff) < 0.5) return '→';
+        return diff > 0 ? '↗️' : '↘️';
+      }
+
+      function checkAlert(value, key, thresholds) {
+        if (!thresholds[key]) return null;
+        const { min, max } = thresholds[key];
+        if (value < min || value > max) return 'danger';
+        if (value < min * 1.1 || value > max * 0.9) return 'warning';
+        return null;
+      }
+
+      function showAlert(message, type = 'danger') {
+        const banner = document.getElementById('alertBanner');
+        banner.textContent = message;
+        banner.className = `alert-banner ${type} show`;
+        setTimeout(() => {
+          banner.classList.remove('show');
+        }, 5000);
+      }
+
+      // ============ CÁMARA ============
+      async function startCamera() {
+        try {
+          const stream = await navigator.mediaDevices.getUserMedia({
+            video: { 
+              facingMode: 'environment',
+              width: { ideal: 1280 },
+              height: { ideal: 720 }
+            },
+            audio: false
+          });
+
+          video.srcObject = stream;
+          
+          await new Promise(resolve => {
+            video.onloadedmetadata = () => {
+              video.play();
+              resolve();
+            };
+          });
+
+          canvas.width = video.videoWidth;
+          canvas.height = video.videoHeight;
+
+          console.log('✓ Cámara iniciada');
+        } catch (err) {
+          console.error('Error al acceder a la cámara:', err);
+          document.getElementById('status').textContent = '⚠️ Error: No se pudo acceder a la cámara';
+        }
+      }
+
+      // ============ CARGAR MODELO ============
+      async function loadModel() {
+        try {
+          document.getElementById('status').textContent = 'Cargando modelo de IA...';
+          model = await cocoSsd.load({ base: 'mobilenet_v2' });
+          document.getElementById('loading').classList.add('hidden');
+          document.getElementById('status').textContent = '✓ IA lista - Buscando plantas...';
+          document.getElementById('status').classList.add('detecting');
+          console.log('✓ Modelo COCO-SSD cargado');
+        } catch (err) {
+          console.error('Error al cargar el modelo:', err);
+          document.getElementById('status').textContent = '⚠️ Error al cargar IA';
+        }
+      }
+
+      // ============ CARGAR DATOS (con cache) ============
+      async function loadPlantData(plantIndex) {
+        const now = Date.now();
+        const cached = plantDataCache.get(plantIndex);
+
+        // Si hay cache y es reciente (menos de 5 segundos), usar cache
+        if (cached && (now - cached.lastUpdate) < CONFIG.dataUpdateInterval) {
+          return cached.data;
+        }
+
+        // Cargar datos nuevos
+        const plantId = plantIndex === 0 ? defaultId : `planta0${plantIndex + 1}`;
+        const url = `./data/${encodeURIComponent(plantId)}.json`;
+        
+        try {
+          const response = await fetch(url, { cache: 'no-store' });
+          if (!response.ok) throw new Error(`${response.status}`);
+          const data = await response.json();
+          
+          // Guardar en cache
+          plantDataCache.set(plantIndex, {
+            data: data,
+            lastUpdate: now,
+            previousData: cached ? cached.data : null
+          });
+          
+          return data;
+        } catch (err) {
+          console.warn(`Usando datos de fallback para planta ${plantIndex}:`, err);
+          const fallback = { ...fallbackData, name: `Planta ${plantIndex + 1}` };
+          
+          if (!cached) {
+            plantDataCache.set(plantIndex, {
+              data: fallback,
+              lastUpdate: now,
+              previousData: null
+            });
+          }
+          
+          return cached ? cached.data : fallback;
+        }
+      }
+
+      // ============ CREAR/ACTUALIZAR PANEL ============
+      function createOrUpdatePanel(plantIndex, bbox, confidence, data) {
+        const panelId = `panel-${plantIndex}`;
+        let panel = document.getElementById(panelId);
+
+        if (!panel) {
+          panel = document.createElement('div');
+          panel.id = panelId;
+          panel.className = 'data-panel';
+          container.appendChild(panel);
+        }
+
+        const cached = plantDataCache.get(plantIndex);
+        const previousData = cached?.previousData?.sensors;
+        const s = data.sensors || {};
+        
+        // Verificar alertas
+        let hasAlert = false;
+        let alertLevel = null;
+        let alertMessages = [];
+        
+        Object.keys(s).forEach(key => {
+          const alert = checkAlert(s[key], key, CONFIG.alertThresholds);
+          if (alert === 'danger') {
+            hasAlert = true;
+            alertLevel = 'danger';
+            alertMessages.push(`${key}: ${s[key]}`);
+          } else if (alert === 'warning' && alertLevel !== 'danger') {
+            hasAlert = true;
+            alertLevel = 'warning';
+          }
+        });
+
+        // Mostrar alerta solo una vez
+        if (hasAlert && !alertShown.has(plantIndex)) {
+          if (alertLevel === 'danger') {
+            showAlert(`⚠️ ${data.name}: ${alertMessages.join(', ')}`, 'danger');
+          }
+          alertShown.add(plantIndex);
+          setTimeout(() => alertShown.delete(plantIndex), 30000); // Reset después de 30s
+        }
+
+        // Construir HTML con chips individuales
+        panel.innerHTML = `
+          <div class="plant-title">
+            <div class="plant-name">${data.name || `Planta ${plantIndex + 1}`}</div>
+            <div class="plant-confidence">${Math.round(confidence * 100)}%</div>
+          </div>
+          
+          <div class="data-chip ${checkAlert(s.temp_c, 'temp_c', CONFIG.alertThresholds) ? 'alert-' + checkAlert(s.temp_c, 'temp_c', CONFIG.alertThresholds) : ''}">
+            <span class="data-icon">🌡️</span>
+            <div class="data-content">
+              <div class="data-label">Temperatura</div>
+              <div class="data-value-container">
+                <span class="data-value">${fmt(s.temp_c)}</span>
+                <span class="data-unit">°C</span>
+                <span class="data-trend">${getTrend(s.temp_c, previousData?.temp_c)}</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="data-chip ${checkAlert(s.hum_pct, 'hum_pct', CONFIG.alertThresholds) ? 'alert-' + checkAlert(s.hum_pct, 'hum_pct', CONFIG.alertThresholds) : ''}">
+            <span class="data-icon">💧</span>
+            <div class="data-content">
+              <div class="data-label">Humedad</div>
+              <div class="data-value-container">
+                <span class="data-value">${fmt(s.hum_pct)}</span>
+                <span class="data-unit">%</span>
+                <span class="data-trend">${getTrend(s.hum_pct, previousData?.hum_pct)}</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="data-chip ${checkAlert(s.soil_moist_pct, 'soil_moist_pct', CONFIG.alertThresholds) ? 'alert-' + checkAlert(s.soil_moist_pct, 'soil_moist_pct', CONFIG.alertThresholds) : ''}">
+            <span class="data-icon">🌱</span>
+            <div class="data-content">
+              <div class="data-label">Suelo</div>
+              <div class="data-value-container">
+                <span class="data-value">${fmt(s.soil_moist_pct)}</span>
+                <span class="data-unit">%</span>
+                <span class="data-trend">${getTrend(s.soil_moist_pct, previousData?.soil_moist_pct)}</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="data-chip">
+            <span class="data-icon">💡</span>
+            <div class="data-content">
+              <div class="data-label">Luz</div>
+              <div class="data-value-container">
+                <span class="data-value">${s.lux != null ? s.lux : '--'}</span>
+                <span class="data-unit">lux</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="data-chip ${checkAlert(s.battery_pct, 'battery_pct', CONFIG.alertThresholds) ? 'alert-' + checkAlert(s.battery_pct, 'battery_pct', CONFIG.alertThresholds) : ''}">
+            <span class="data-icon">🔋</span>
+            <div class="data-content">
+              <div class="data-label">Batería</div>
+              <div class="data-value-container">
+                <span class="data-value">${fmt(s.battery_pct)}</span>
+                <span class="data-unit">%</span>
+                <span class="data-trend">${getTrend(s.battery_pct, previousData?.battery_pct)}</span>
+              </div>
+            </div>
+          </div>
+        `;
+
+        // Posicionar panel (más cerca de la planta)
+        const [x, y, width, height] = bbox;
+        const panelWidth = 180;
+        const panelX = Math.min(x + width + 15, window.innerWidth - panelWidth - 10);
+        const panelY = Math.max(10, y);
+        
+        panel.style.left = panelX + 'px';
+        panel.style.top = panelY + 'px';
+        panel.classList.add('visible');
+
+        return panel;
+      }
+
+      // ============ DETECCIÓN ============
+      async function detect() {
+        if (!model || !video.videoWidth) {
+          requestAnimationFrame(detect);
+          return;
+        }
+
+        const now = Date.now();
+        
+        // Limitar frecuencia de detección
+        if (now - lastDetectionTime < CONFIG.detectionInterval) {
+          requestAnimationFrame(detect);
+          return;
+        }
+        lastDetectionTime = now;
+
+        // FPS counter
+        frameCount++;
+        if (now - lastFpsTime > 1000) {
+          document.getElementById('fps').textContent = frameCount;
+          frameCount = 0;
+          lastFpsTime = now;
+        }
+
+        // Realizar detección
+        const predictions = await model.detect(video);
+        detectionCount++;
+
+        // Limpiar canvas
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        // Buscar plantas
+        const plants = predictions.filter(p => 
+          p.class === 'potted plant' || 
+          p.class === 'vase' || 
+          p.class === 'plant'
+        );
+
+        document.getElementById('plantCount').textContent = plants.length;
+
+        const activePanels = new Set();
+
+        if (plants.length > 0) {
+          for (let i = 0; i < plants.length; i++) {
+            const plant = plants[i];
+            const [x, y, width, height] = plant.bbox;
+
+            // Dibujar bounding box
+            ctx.strokeStyle = '#02eef0';
+            ctx.lineWidth = 3;
+            ctx.strokeRect(x, y, width, height);
+
+            // Dibujar etiqueta
+            ctx.fillStyle = '#02eef0';
+            ctx.font = 'bold 16px system-ui';
+            const label = `${plant.class} ${i + 1}`;
+            const textWidth = ctx.measureText(label).width;
+            ctx.fillRect(x, y - 25, textWidth + 10, 25);
+            ctx.fillStyle = '#000';
+            ctx.fillText(label, x + 5, y - 7);
+
+            // Cargar datos (usa cache automáticamente)
+            const data = await loadPlantData(i);
+            createOrUpdatePanel(i, plant.bbox, plant.score, data);
+            activePanels.add(i);
+          }
+
+          const instructions = document.getElementById('instructions');
+          instructions.textContent = plants.length === 1 
+            ? '✅ Planta detectada'
+            : `✅ ${plants.length} plantas detectadas`;
+          instructions.classList.add('success');
+        } else {
+          document.getElementById('instructions').textContent = '🔍 Buscando plantas...';
+          document.getElementById('instructions').classList.remove('success');
+        }
+
+        // Ocultar paneles inactivos
+        document.querySelectorAll('.data-panel').forEach((panel, index) => {
+          const panelIndex = parseInt(panel.id.split('-')[1]);
+          if (!activePanels.has(panelIndex)) {
+            panel.classList.remove('visible');
+            setTimeout(() => {
+              if (!panel.classList.contains('visible')) {
+                panel.remove();
+              }
+            }, 500);
+          }
+        });
+
+        requestAnimationFrame(detect);
+      }
+
+      // ============ CONTROLES ============
+      document.getElementById('btnTheme').addEventListener('click', () => {
+        currentTheme = currentTheme === 'dark' ? 'light' : 'dark';
+        document.body.setAttribute('data-theme', currentTheme);
+      });
+
+      document.getElementById('btnFullscreen').addEventListener('click', () => {
+        if (!document.fullscreenElement) {
+          document.documentElement.requestFullscreen();
+        } else {
+          document.exitFullscreen();
+        }
+      });
+
+      // ============ PWA ============
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('./sw.js')
+          .then(() => console.log('✓ Service Worker registrado'))
+          .catch(err => console.warn('Service Worker no disponible:', err));
+      }
+
+      // ============ INICIALIZACIÓN ============
+      async function init() {
+        await startCamera();
+        await loadModel();
+        detect();
+      }
+
+      init();
+
+    })();
+  </script>
+
+</body>
+</html>s

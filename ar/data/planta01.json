@@ -1,0 +1,18 @@
+{
+  "eventType": "MONITORING",
+  "eventId": "01HXZZ4G26NQY0XJZK9VG7QVB",
+  "batchId": "01HXZZ4G26NS3D8JK8DZXY03",
+  "lotCode": "FARM456-2025-03-15-PLOT-3",
+  "timestamp": "2025-10-10T14:30:22.000Z",
+  "recordedBy": "device-SENSOR-03",
+  "fieldId": "PLOT-3",
+  "seed_LotId": "SEED-LOT-B12-89",
+  "seedVariety": "Cherry Tomato Hybrid",
+  "seedSupplier": "BioSeeds International",
+  "seedTreatment": "organic-certified",
+  "quantity_kg": 1.8,
+  "plantingMethod": "hydroponic-system",
+  "rowSpacing_cm": 45,
+  "plantingDepth_cm": 2.0,
+  "germinationRate_pct": 94
+}
