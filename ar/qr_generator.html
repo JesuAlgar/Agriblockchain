@@ -186,14 +186,13 @@
       <input 
         type="text" 
         id="baseUrl" 
-        value="https://tuapp.com/index.html"
-        placeholder="https://tuapp.com/index.html"
+        value="https://agriblockchain.netlify.app/index.html"
+        placeholder="https://agriblockchain.netlify.app/index.html"
       >
       <div class="examples">
         <strong>Ejemplos:</strong><br>
-        • Local: http://localhost:8443/index.html<br>
-        • Tu IP: https://192.168.1.x:8443/index.html<br>
-        • Producción: https://arplanta.app
+        • Netlify: https://agriblockchain.netlify.app/index.html<br>
+        • Vercel: https://arplanta.vercel.app/index.html
       </div>
     </div>
 
@@ -225,14 +224,13 @@
 
     <div class="qr-container" id="qrContainer">
       <h3 style="color: #000; margin-bottom: 10px;">📱 Escanea este QR</h3>
-      <div id="qrcode"></div>
+      <canvas id="qrcode"></canvas>
       <div class="url-display" id="urlDisplay"></div>
       <button class="download-btn" onclick="downloadQR()">⬇️ Descargar PNG</button>
     </div>
   </div>
 
   <script>
-    let currentQR = null;
     let currentURL = '';
 
     function generateQR() {
@@ -250,12 +248,12 @@
       const separator = baseUrl.includes('?') ? '&' : '?';
       currentURL = `${baseUrl}${separator}id=${encodeURIComponent(plantId)}`;
 
-      // Limpiar QR anterior
-      document.getElementById('qrcode').innerHTML = '';
+      // Obtener canvas
+      const canvas = document.getElementById('qrcode');
 
-      // Generar nuevo QR
+      // Generar QR
       QRCode.toCanvas(
-        document.getElementById('qrcode'),
+        canvas,
         currentURL,
         {
           width: size,
@@ -280,8 +278,9 @@
     }
 
     function downloadQR() {
-      const canvas = document.querySelector('#qrcode canvas');
-      if (!canvas) {
+      const canvas = document.getElementById('qrcode');
+      
+      if (!canvas || canvas.width === 0) {
         alert('⚠️ Primero genera un QR');
         return;
       }
