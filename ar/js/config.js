@@ -37,39 +37,35 @@ export const CONFIG = {
   },
   
   // ⭐ CONFIGURACIÓN BLOCKCHAIN CON ANKR
-  blockchain: {
-    // Modo: 'LOCAL_JSON' o 'BLOCKCHAIN'
-    mode: 'BLOCKCHAIN',
-    
-    // Configuración de Sepolia con RPC de Ankr
-    network: {
-      name: 'Sepolia',
-      chainId: 11155111,
-      chainIdHex: '0xaa36a7',
-      rpcUrl: 'https://rpc.ankr.com/eth_sepolia'
+blockchain: {
+  mode: 'BLOCKCHAIN',
+  
+  network: {
+    name: 'Sepolia',
+    chainId: 11155111,
+    chainIdHex: '0xaa36a7',
+    rpcUrl: 'https://eth-sepolia.g.alchemy.com/v2/8jUDyP_I-VJU40ZtPzxDM'  // ⭐ TU API KEY
+  },
+  
+  contractAddress: '0x2299b2eEc07A9c406C2688EeB6c7c74f92e3dA42',
+  
+  contractABI: [
+    {
+      "inputs": [{"internalType": "string", "name": "_plantId", "type": "string"}],
+      "name": "getPlantData",
+      "outputs": [{"internalType": "string", "name": "", "type": "string"}],
+      "stateMutability": "view",
+      "type": "function"
     },
-    
-    // Tu contrato desplegado
-    contractAddress: '0x2299b2eEc07A9c406C2688EeB6c7c74f92e3dA42',
-    
-    // ABI del contrato (solo las funciones que necesitamos)
-    contractABI: [
-      {
-        "inputs": [{"internalType": "string", "name": "_plantId", "type": "string"}],
-        "name": "getPlantData",
-        "outputs": [{"internalType": "string", "name": "", "type": "string"}],
-        "stateMutability": "view",
-        "type": "function"
-      },
-      {
-        "inputs": [{"internalType": "string", "name": "_plantId", "type": "string"}],
-        "name": "plantExists",
-        "outputs": [{"internalType": "bool", "name": "", "type": "bool"}],
-        "stateMutability": "view",
-        "type": "function"
-      }
-    ]
-  }
+    {
+      "inputs": [{"internalType": "string", "name": "_plantId", "type": "string"}],
+      "name": "plantExists",
+      "outputs": [{"internalType": "bool", "name": "", "type": "bool"}],
+      "stateMutability": "view",
+      "type": "function"
+    }
+  ]
+}
 };
 
 // Obtener ID de planta desde URL
