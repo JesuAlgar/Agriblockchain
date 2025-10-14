@@ -43,11 +43,11 @@ export const CONFIG = {
     
     // Configuración de Sepolia
     network: {
-      name: 'Sepolia',
-      chainId: 11155111,
-      chainIdHex: '0xaa36a7',
-      rpcUrl: 'https://sepolia.infura.io/v3/9aa3d95b3bc440fa88ea12eaa4456161' // RPC público
-    },
+  name: 'Sepolia',
+  chainId: 11155111,
+  chainIdHex: '0xaa36a7',
+  rpcUrl: 'https://eth-sepolia.g.alchemy.com/v2/demo'
+},
     
     // Tu contrato desplegado
     contractAddress: '0x2299b2eEc07A9c406C2688EeB6c7c74f92e3dA42',
