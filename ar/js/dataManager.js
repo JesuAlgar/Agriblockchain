@@ -7,7 +7,7 @@ import { log } from './utils.js';
 
 // Datos de fallback cuando no se puede cargar
 const FALLBACK_DATA = {
-  eventType: "MONITORING",
+  eventType: "MONITOR",
   eventId: "01FALLBACK000000000000000",
   batchId: "01FALLBACK000000000000001",
   lotCode: "DEMO-2025-10-10-FALLBACK",
