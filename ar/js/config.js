@@ -36,18 +36,18 @@ export const CONFIG = {
     alertCooldown: 30000
   },
   
-  // ⭐ NUEVA CONFIGURACIÓN BLOCKCHAIN
+  // ⭐ CONFIGURACIÓN BLOCKCHAIN CON ANKR
   blockchain: {
     // Modo: 'LOCAL_JSON' o 'BLOCKCHAIN'
-    mode: 'BLOCKCHAIN',  // ← Cambia a 'LOCAL_JSON' para volver al modo anterior
+    mode: 'BLOCKCHAIN',
     
-    // Configuración de Sepolia
+    // Configuración de Sepolia con RPC de Ankr
     network: {
-  name: 'Sepolia',
-  chainId: 11155111,
-  chainIdHex: '0xaa36a7',
-  rpcUrl: 'https://eth-sepolia.g.alchemy.com/v2/demo'
-},
+      name: 'Sepolia',
+      chainId: 11155111,
+      chainIdHex: '0xaa36a7',
+      rpcUrl: 'https://rpc.ankr.com/eth_sepolia'
+    },
     
     // Tu contrato desplegado
     contractAddress: '0x2299b2eEc07A9c406C2688EeB6c7c74f92e3dA42',
@@ -90,7 +90,7 @@ export const STATE = {
   detectionCount: 0,
   alertShown: new Set(),
   
-  // ⭐ NUEVOS: Estado blockchain
+  // Estado blockchain
   blockchainProvider: null,
   blockchainContract: null,
   blockchainConnected: false
