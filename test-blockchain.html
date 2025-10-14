@@ -1,0 +1,496 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PlantRegistry - Test Interface</title>
+  <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      padding: 20px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+    
+    .container {
+      background: white;
+      border-radius: 20px;
+      padding: 40px;
+      max-width: 600px;
+      width: 100%;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+    }
+    
+    h1 {
+      color: #333;
+      margin-bottom: 10px;
+      font-size: 28px;
+    }
+    
+    .subtitle {
+      color: #666;
+      margin-bottom: 30px;
+      font-size: 14px;
+    }
+    
+    .status {
+      padding: 15px;
+      border-radius: 10px;
+      margin-bottom: 20px;
+      font-weight: 500;
+    }
+    
+    .status.info {
+      background: #e3f2fd;
+      color: #1976d2;
+      border-left: 4px solid #1976d2;
+    }
+    
+    .status.success {
+      background: #e8f5e9;
+      color: #388e3c;
+      border-left: 4px solid #388e3c;
+    }
+    
+    .status.error {
+      background: #ffebee;
+      color: #d32f2f;
+      border-left: 4px solid #d32f2f;
+    }
+    
+    .status.warning {
+      background: #fff3e0;
+      color: #f57c00;
+      border-left: 4px solid #f57c00;
+    }
+    
+    button {
+      width: 100%;
+      padding: 15px;
+      border: none;
+      border-radius: 10px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s;
+      margin-bottom: 15px;
+    }
+    
+    button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+    }
+    
+    button:active {
+      transform: translateY(0);
+    }
+    
+    button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      transform: none;
+    }
+    
+    .btn-primary {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+    }
+    
+    .btn-secondary {
+      background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+      color: white;
+    }
+    
+    .btn-success {
+      background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+      color: white;
+    }
+    
+    .info-box {
+      background: #f5f5f5;
+      padding: 15px;
+      border-radius: 10px;
+      margin-bottom: 20px;
+      font-size: 13px;
+      line-height: 1.6;
+    }
+    
+    .info-box strong {
+      color: #333;
+      display: block;
+      margin-bottom: 5px;
+    }
+    
+    .info-box code {
+      background: white;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-family: 'Courier New', monospace;
+      font-size: 12px;
+      word-break: break-all;
+    }
+    
+    .data-display {
+      background: #f9f9f9;
+      border: 1px solid #e0e0e0;
+      border-radius: 10px;
+      padding: 20px;
+      margin-top: 20px;
+      max-height: 400px;
+      overflow-y: auto;
+    }
+    
+    .data-display pre {
+      margin: 0;
+      white-space: pre-wrap;
+      word-wrap: break-word;
+      font-size: 13px;
+      line-height: 1.6;
+    }
+    
+    .loading {
+      display: inline-block;
+      width: 20px;
+      height: 20px;
+      border: 3px solid rgba(255,255,255,.3);
+      border-radius: 50%;
+      border-top-color: #fff;
+      animation: spin 1s ease-in-out infinite;
+    }
+    
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+    
+    .hidden {
+      display: none;
+    }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <h1>🌱 PlantRegistry Test</h1>
+  <div class="subtitle">Interfaz para interactuar con tu contrato en Sepolia</div>
+  
+  <div id="status" class="status info">
+    ℹ️ Conecta tu MetaMask para comenzar
+  </div>
+  
+  <div class="info-box">
+    <strong>📍 Contract Address:</strong>
+    <code>0x2299b2eEc07A9c406C2688EeB6c7c74f92e3dA42</code>
+    <br><br>
+    <strong>🌐 Red:</strong> Sepolia Testnet
+  </div>
+  
+  <!-- Botón Conectar -->
+  <button id="btnConnect" class="btn-primary" onclick="connectWallet()">
+    🦊 Conectar MetaMask
+  </button>
+  
+  <!-- Botones de acciones (ocultos hasta conectar) -->
+  <div id="actions" class="hidden">
+    <button id="btnLoadPlant" class="btn-success" onclick="loadPlantData()">
+      📝 Cargar Datos de Planta01
+    </button>
+    
+    <button id="btnReadPlant" class="btn-secondary" onclick="readPlantData()">
+      📖 Leer Datos de Planta01
+    </button>
+  </div>
+  
+  <!-- Display de datos -->
+  <div id="dataDisplay" class="data-display hidden">
+    <pre id="dataContent"></pre>
+  </div>
+</div>
+
+<script>
+// Configuración del contrato
+const CONTRACT_ADDRESS = "0x2299b2eEc07A9c406C2688EeB6c7c74f92e3dA42";
+const SEPOLIA_CHAIN_ID = "0xaa36a7"; // 11155111 en hex
+
+// ABI del contrato
+const CONTRACT_ABI = [
+  {
+    "inputs": [],
+    "stateMutability": "nonpayable",
+    "type": "constructor"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {"indexed": true, "internalType": "string", "name": "plantId", "type": "string"},
+      {"indexed": false, "internalType": "uint256", "name": "timestamp", "type": "uint256"}
+    ],
+    "name": "PlantRegistered",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {"indexed": true, "internalType": "string", "name": "plantId", "type": "string"},
+      {"indexed": false, "internalType": "uint256", "name": "timestamp", "type": "uint256"}
+    ],
+    "name": "PlantUpdated",
+    "type": "event"
+  },
+  {
+    "inputs": [
+      {"internalType": "string", "name": "_plantId", "type": "string"}
+    ],
+    "name": "getPlantData",
+    "outputs": [
+      {"internalType": "string", "name": "", "type": "string"}
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "owner",
+    "outputs": [
+      {"internalType": "address", "name": "", "type": "address"}
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {"internalType": "string", "name": "", "type": "string"}
+    ],
+    "name": "plantData",
+    "outputs": [
+      {"internalType": "string", "name": "", "type": "string"}
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {"internalType": "string", "name": "_plantId", "type": "string"}
+    ],
+    "name": "plantExists",
+    "outputs": [
+      {"internalType": "bool", "name": "", "type": "bool"}
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {"internalType": "uint256", "name": "", "type": "uint256"}
+    ],
+    "name": "plantIds",
+    "outputs": [
+      {"internalType": "string", "name": "", "type": "string"}
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {"internalType": "string", "name": "_plantId", "type": "string"},
+      {"internalType": "string", "name": "_jsonData", "type": "string"}
+    ],
+    "name": "setPlantData",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "getTotalPlants",
+    "outputs": [
+      {"internalType": "uint256", "name": "", "type": "uint256"}
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  }
+];
+
+// Datos de planta01
+const PLANT01_DATA = {
+  "eventType": "SEEDING",
+  "eventId": "01HXZZ4G26NQY0XJZK9VG7QVB",
+  "batchId": "01HXZZ4G26NS3D8JK8DZXY03",
+  "lotCode": "FARM456-2025-03-15-PLOT-3",
+  "timestamp": 1728568222,
+  "recordedBy": "device-SENSOR-03",
+  "fieldId": "PLOT-3",
+  "seed_LotId": "SEED-LOT-B12-89",
+  "seedVariety": "Cherry Tomato Hybrid",
+  "seedSupplier": "BioSeeds International",
+  "seedTreatment": "organic-certified",
+  "quantity_kg": 1800,
+  "plantingMethod": "hydroponic-system",
+  "rowSpacing_cm": 45,
+  "plantingDepth_cm": 20,
+  "germinationRate_pct": 94
+};
+
+let provider, signer, contract;
+
+// Actualizar status
+function updateStatus(message, type = 'info') {
+  const statusDiv = document.getElementById('status');
+  statusDiv.className = `status ${type}`;
+  statusDiv.innerHTML = message;
+}
+
+// Conectar wallet
+async function connectWallet() {
+  try {
+    if (typeof window.ethereum === 'undefined') {
+      updateStatus('❌ MetaMask no está instalado. Por favor, instala MetaMask.', 'error');
+      return;
+    }
+
+    updateStatus('🔄 Conectando a MetaMask...', 'info');
+
+    // Solicitar conexión
+    await window.ethereum.request({ method: 'eth_requestAccounts' });
+
+    // Verificar red
+    const chainId = await window.ethereum.request({ method: 'eth_chainId' });
+    
+    if (chainId !== SEPOLIA_CHAIN_ID) {
+      updateStatus('⚠️ Por favor, cambia a la red Sepolia en MetaMask', 'warning');
+      
+      try {
+        await window.ethereum.request({
+          method: 'wallet_switchEthereumChain',
+          params: [{ chainId: SEPOLIA_CHAIN_ID }],
+        });
+      } catch (switchError) {
+        updateStatus('❌ No se pudo cambiar a Sepolia. Cámbialo manualmente en MetaMask.', 'error');
+        return;
+      }
+    }
+
+    // Conectar con ethers
+    provider = new ethers.providers.Web3Provider(window.ethereum);
+    signer = provider.getSigner();
+    const address = await signer.getAddress();
+    
+    // Crear instancia del contrato
+    contract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, signer);
+
+    updateStatus(`✅ Conectado: ${address.substring(0, 6)}...${address.substring(38)}`, 'success');
+
+    // Mostrar botones de acciones
+    document.getElementById('actions').classList.remove('hidden');
+    document.getElementById('btnConnect').disabled = true;
+
+  } catch (error) {
+    console.error(error);
+    updateStatus(`❌ Error: ${error.message}`, 'error');
+  }
+}
+
+// Cargar datos de planta01
+async function loadPlantData() {
+  try {
+    const btn = document.getElementById('btnLoadPlant');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="loading"></span> Cargando...';
+    
+    updateStatus('📝 Preparando transacción...', 'info');
+
+    // Convertir datos a JSON string
+    const jsonData = JSON.stringify(PLANT01_DATA);
+
+    updateStatus('🔄 Enviando transacción a blockchain...', 'info');
+
+    // Llamar a setPlantData
+    const tx = await contract.setPlantData("planta01", jsonData);
+    
+    updateStatus(`⏳ Transacción enviada. Esperando confirmación...<br><small>Hash: ${tx.hash}</small>`, 'warning');
+
+    // Esperar confirmación
+    const receipt = await tx.wait();
+
+    updateStatus(`✅ ¡Datos cargados exitosamente!<br><small>Block: ${receipt.blockNumber}</small>`, 'success');
+    
+    btn.disabled = false;
+    btn.innerHTML = '✅ Datos Cargados';
+
+    // Mostrar datos
+    document.getElementById('dataDisplay').classList.remove('hidden');
+    document.getElementById('dataContent').textContent = 
+      `Planta01 guardada en blockchain:\n\n${JSON.stringify(PLANT01_DATA, null, 2)}`;
+
+  } catch (error) {
+    console.error(error);
+    updateStatus(`❌ Error: ${error.message}`, 'error');
+    
+    const btn = document.getElementById('btnLoadPlant');
+    btn.disabled = false;
+    btn.innerHTML = '📝 Cargar Datos de Planta01';
+  }
+}
+
+// Leer datos de planta01
+async function readPlantData() {
+  try {
+    const btn = document.getElementById('btnReadPlant');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="loading"></span> Leyendo...';
+    
+    updateStatus('📖 Leyendo datos de blockchain...', 'info');
+
+    // Llamar a getPlantData
+    const jsonData = await contract.getPlantData("planta01");
+    
+    // Parsear JSON
+    const plantData = JSON.parse(jsonData);
+
+    updateStatus('✅ Datos leídos correctamente', 'success');
+    
+    btn.disabled = false;
+    btn.innerHTML = '📖 Leer Datos de Planta01';
+
+    // Mostrar datos
+    document.getElementById('dataDisplay').classList.remove('hidden');
+    document.getElementById('dataContent').textContent = 
+      `Datos de Planta01 desde blockchain:\n\n${JSON.stringify(plantData, null, 2)}`;
+
+  } catch (error) {
+    console.error(error);
+    if (error.message.includes('Planta no encontrada')) {
+      updateStatus('⚠️ Planta01 aún no tiene datos. Usa el botón "Cargar Datos" primero.', 'warning');
+    } else {
+      updateStatus(`❌ Error: ${error.message}`, 'error');
+    }
+    
+    const btn = document.getElementById('btnReadPlant');
+    btn.disabled = false;
+    btn.innerHTML = '📖 Leer Datos de Planta01';
+  }
+}
+
+// Detectar cambios de cuenta o red
+if (typeof window.ethereum !== 'undefined') {
+  window.ethereum.on('accountsChanged', () => {
+    location.reload();
+  });
+  
+  window.ethereum.on('chainChanged', () => {
+    location.reload();
+  });
+}
+</script>
+
+</body>
+</html>

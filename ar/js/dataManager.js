@@ -2,10 +2,10 @@
 // GESTOR DE DATOS Y CACHÉ
 // ============================================
 
-import { CONFIG, getPlantIdFromURL } from './config.js';
+import { CONFIG, getPlantIdFromURL, STATE } from './config.js';
 import { log } from './utils.js';
 
-// Datos de fallback cuando no se puede cargar del servidor
+// Datos de fallback cuando no se puede cargar
 const FALLBACK_DATA = {
   eventType: "MONITORING",
   eventId: "01FALLBACK000000000000000",
@@ -15,7 +15,7 @@ const FALLBACK_DATA = {
   recordedBy: "device-DEMO",
   fieldId: "DEMO-FIELD",
   seed_LotId: "DEMO-SEED-001",
-  seedVariety: "Demo Plant (No JSON)",
+  seedVariety: "Demo Plant (No Data)",
   seedSupplier: "Demo Supplier",
   seedTreatment: "demo",
   quantity_kg: 0.0,
@@ -29,9 +29,112 @@ const FALLBACK_DATA = {
 const plantDataCache = new Map();
 
 /**
- * Carga los datos de una planta desde el servidor (con caché)
- * @param {number} plantIndex - Índice de la planta (0, 1, 2...)
- * @returns {Promise<object>} - Datos de la planta
+ * ⭐ NUEVA: Inicializar conexión a blockchain
+ */
+async function initBlockchain() {
+  if (STATE.blockchainConnected) {
+    return true; // Ya conectado
+  }
+
+  try {
+    log('Inicializando conexión a blockchain...');
+
+    // Verificar que ethers esté disponible
+    if (typeof window.ethers === 'undefined') {
+      throw new Error('Ethers.js no está cargado');
+    }
+
+    // Crear provider (solo lectura, no necesita MetaMask)
+    const provider = new ethers.providers.JsonRpcProvider(
+      CONFIG.blockchain.network.rpcUrl
+    );
+
+    // Crear instancia del contrato
+    const contract = new ethers.Contract(
+      CONFIG.blockchain.contractAddress,
+      CONFIG.blockchain.contractABI,
+      provider
+    );
+
+    // Guardar en estado global
+    STATE.blockchainProvider = provider;
+    STATE.blockchainContract = contract;
+    STATE.blockchainConnected = true;
+
+    log('✅ Blockchain conectado a Sepolia');
+    return true;
+
+  } catch (err) {
+    log(`Error conectando a blockchain: ${err.message}`, 'error');
+    STATE.blockchainConnected = false;
+    return false;
+  }
+}
+
+/**
+ * ⭐ NUEVA: Cargar datos desde blockchain
+ */
+async function loadFromBlockchain(plantId) {
+  try {
+    // Asegurar que blockchain está conectado
+    const connected = await initBlockchain();
+    if (!connected) {
+      throw new Error('No se pudo conectar a blockchain');
+    }
+
+    log(`📖 Leyendo datos de blockchain para: ${plantId}`);
+
+    // Verificar si la planta existe
+    const exists = await STATE.blockchainContract.plantExists(plantId);
+    
+    if (!exists) {
+      log(`⚠️ Planta ${plantId} no encontrada en blockchain`, 'warn');
+      throw new Error('Planta no encontrada en blockchain');
+    }
+
+    // Leer datos de la planta
+    const jsonData = await STATE.blockchainContract.getPlantData(plantId);
+    
+    // Parsear JSON
+    const data = JSON.parse(jsonData);
+    
+    log(`✅ Datos de blockchain leídos: ${data.seedVariety}`);
+    
+    return data;
+
+  } catch (err) {
+    log(`Error leyendo blockchain: ${err.message}`, 'error');
+    throw err;
+  }
+}
+
+/**
+ * ⭐ MODIFICADA: Cargar datos desde JSON local
+ */
+async function loadFromLocalJSON(plantId) {
+  const url = `./data/${encodeURIComponent(plantId)}.json`;
+  
+  try {
+    log(`📖 Cargando datos locales desde ${url}`);
+    const response = await fetch(url, { cache: 'no-store' });
+    
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`);
+    }
+    
+    const data = await response.json();
+    log(`✅ Datos locales cargados: ${data.seedVariety}`);
+    return data;
+    
+  } catch (err) {
+    log(`Error cargando JSON local: ${err.message}`, 'warn');
+    throw err;
+  }
+}
+
+/**
+ * ⭐ MODIFICADA: Carga los datos de una planta (con caché)
+ * Ahora soporta BLOCKCHAIN o LOCAL_JSON según configuración
  */
 export async function loadPlantData(plantIndex) {
   // Forzar solo plantIndex = 0
@@ -49,20 +152,20 @@ export async function loadPlantData(plantIndex) {
     return cached.data;
   }
 
-  // Determinar el ID del archivo JSON
-  const defaultId = getPlantIdFromURL();
-  const plantId = defaultId;
-  const url = `./data/${encodeURIComponent(plantId)}.json`;
+  // Determinar el ID del archivo/blockchain
+  const plantId = getPlantIdFromURL();
   
   try {
-    log(`Cargando datos desde ${url}`);
-    const response = await fetch(url, { cache: 'no-store' });
-    
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status}`);
+    let data;
+
+    // ⭐ SELECCIONAR FUENTE DE DATOS
+    if (CONFIG.blockchain.mode === 'BLOCKCHAIN') {
+      log(`🔗 Modo BLOCKCHAIN activado para ${plantId}`);
+      data = await loadFromBlockchain(plantId);
+    } else {
+      log(`📁 Modo LOCAL_JSON activado para ${plantId}`);
+      data = await loadFromLocalJSON(plantId);
     }
-    
-    const data = await response.json();
     
     // Guardar en cache
     plantDataCache.set(plantIndex, {
@@ -71,35 +174,36 @@ export async function loadPlantData(plantIndex) {
       previousData: cached ? cached.data : null
     });
     
-    log(`✓ Datos cargados para planta ${plantIndex}: ${data.seedVariety}`);
+    log(`✅ Datos cargados para planta ${plantIndex}: ${data.seedVariety}`);
     return data;
     
   } catch (err) {
-    log(`No se pudo cargar ${url}: ${err.message}`, 'warn');
+    log(`❌ Error cargando datos: ${err.message}`, 'error');
     
-    // Usar datos de fallback con nombre personalizado
-    const fallback = {
-      ...FALLBACK_DATA,
-      seedVariety: `Planta ${plantIndex + 1}`
-    };
-    
-    // Solo guardar en cache si no existe
-    if (!cached) {
-      plantDataCache.set(plantIndex, {
-        data: fallback,
-        lastUpdate: now,
-        previousData: null
-      });
+    // Intentar usar cache antiguo si existe
+    if (cached) {
+      log(`⚠️ Usando cache antiguo como fallback`);
+      return cached.data;
     }
     
-    return cached ? cached.data : fallback;
+    // Si no hay cache, usar fallback
+    const fallback = {
+      ...FALLBACK_DATA,
+      seedVariety: `Planta ${plantIndex + 1} (Sin datos)`
+    };
+    
+    plantDataCache.set(plantIndex, {
+      data: fallback,
+      lastUpdate: now,
+      previousData: null
+    });
+    
+    return fallback;
   }
 }
 
 /**
  * Obtiene los datos cacheados de una planta
- * @param {number} plantIndex - Índice de la planta
- * @returns {object|null} - Datos cacheados o null
  */
 export function getCachedPlantData(plantIndex) {
   return plantDataCache.get(plantIndex);
@@ -107,7 +211,6 @@ export function getCachedPlantData(plantIndex) {
 
 /**
  * Limpia el caché de una planta específica
- * @param {number} plantIndex - Índice de la planta
  */
 export function clearPlantCache(plantIndex) {
   plantDataCache.delete(plantIndex);
@@ -124,20 +227,21 @@ export function clearAllCache() {
 
 /**
  * Pre-carga los datos de las plantas más comunes
- * @param {number} count - Cantidad de plantas a pre-cargar
  */
 export async function preloadPlantData(count = 3) {
   log(`Pre-cargando datos de ${count} plantas...`);
   const promises = [];
   
   for (let i = 0; i < count; i++) {
-    promises.push(loadPlantData(i));
+    promises.push(loadPlantData(i).catch(err => {
+      log(`Error pre-cargando planta ${i}: ${err.message}`, 'warn');
+    }));
   }
   
   try {
     await Promise.all(promises);
-    log(`✓ Pre-carga completa (${count} plantas)`);
+    log(`✅ Pre-carga completa`);
   } catch (err) {
-    log(`Error en pre-carga: ${err.message}`, 'error');
+    log(`Error en pre-carga: ${err.message}`, 'warn');
   }
 }

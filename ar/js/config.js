@@ -4,8 +4,8 @@
 
 export const CONFIG = {
   // Intervalos de tiempo (ms)
-  detectionInterval: 800,      // Tiempo entre detecciones de IA (aumentado para evitar parpadeos)
-  dataUpdateInterval: 5000,    // Tiempo entre actualizaciones de datos del servidor
+  detectionInterval: 800,
+  dataUpdateInterval: 5000,
   
   // Umbrales de alerta para sensores
   alertThresholds: {
@@ -25,16 +25,50 @@ export const CONFIG = {
   // Configuración del modelo de IA
   model: {
     base: 'mobilenet_v2',
-    // Clases que se consideran como plantas
     plantClasses: ['potted plant', 'vase', 'plant']
   },
   
   // Configuración de UI
   ui: {
-    panelOffset: 20,           // Píxeles de separación (no usado en posición fija)
-    panelWidth: 220,           // Ancho del panel de datos
-    alertDuration: 5000,       // Duración de alertas (ms)
-    alertCooldown: 30000       // Tiempo antes de poder mostrar la misma alerta (ms)
+    panelOffset: 20,
+    panelWidth: 220,
+    alertDuration: 5000,
+    alertCooldown: 30000
+  },
+  
+  // ⭐ NUEVA CONFIGURACIÓN BLOCKCHAIN
+  blockchain: {
+    // Modo: 'LOCAL_JSON' o 'BLOCKCHAIN'
+    mode: 'BLOCKCHAIN',  // ← Cambia a 'LOCAL_JSON' para volver al modo anterior
+    
+    // Configuración de Sepolia
+    network: {
+      name: 'Sepolia',
+      chainId: 11155111,
+      chainIdHex: '0xaa36a7',
+      rpcUrl: 'https://sepolia.infura.io/v3/9aa3d95b3bc440fa88ea12eaa4456161' // RPC público
+    },
+    
+    // Tu contrato desplegado
+    contractAddress: '0x2299b2eEc07A9c406C2688EeB6c7c74f92e3dA42',
+    
+    // ABI del contrato (solo las funciones que necesitamos)
+    contractABI: [
+      {
+        "inputs": [{"internalType": "string", "name": "_plantId", "type": "string"}],
+        "name": "getPlantData",
+        "outputs": [{"internalType": "string", "name": "", "type": "string"}],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [{"internalType": "string", "name": "_plantId", "type": "string"}],
+        "name": "plantExists",
+        "outputs": [{"internalType": "bool", "name": "", "type": "bool"}],
+        "stateMutability": "view",
+        "type": "function"
+      }
+    ]
   }
 };
 
@@ -54,5 +88,10 @@ export const STATE = {
   container: null,
   lastDetectionTime: 0,
   detectionCount: 0,
-  alertShown: new Set()
+  alertShown: new Set(),
+  
+  // ⭐ NUEVOS: Estado blockchain
+  blockchainProvider: null,
+  blockchainContract: null,
+  blockchainConnected: false
 };
