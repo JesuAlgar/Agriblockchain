@@ -1,5 +1,5 @@
 /* ============================================
-   AR PLANTA IA - ESTILOS (TODO TRANSPARENTE)
+   AR PLANTA IA - ESTILOS MEJORADOS CON ZOOM
    ============================================ */
 
 /* ============================================
@@ -40,7 +40,7 @@ body {
   overflow: hidden;
   height: 100vh;
   width: 100vw;
-  background: #000; /* ✅ Fondo negro puro */
+  background: #000;
   color: var(--text);
   transition: background 0.3s, color 0.3s;
 }
@@ -58,7 +58,7 @@ body {
   justify-content: center;
   align-items: center;
   overflow: hidden;
-  background: #000; /* ✅ Negro puro */
+  background: #000;
 }
 
 #camera {
@@ -67,8 +67,8 @@ body {
   left: 0;
   width: 100%;
   height: 100%;
-  object-fit: cover; /* ✅ Cubre toda la pantalla sin bordes */
-  object-position: center; /* ✅ Centrado */
+  object-fit: cover;
+  object-position: center;
 }
 
 #canvas {
@@ -77,7 +77,7 @@ body {
   left: 0;
   width: 100%;
   height: 100%;
-  object-fit: cover; /* ✅ Coincide con el video */
+  object-fit: cover;
   object-position: center;
 }
 
@@ -89,16 +89,18 @@ body {
   top: 10px;
   left: 10px;
   z-index: 100;
-  background: none !important; /* ✅ SIN FONDO */
-  backdrop-filter: none !important; /* ✅ SIN BLUR */
-  padding: 0; /* ✅ SIN PADDING */
+  background: none !important;
+  backdrop-filter: none !important;
+  padding: 0;
   border-radius: 0;
-  border: none !important; /* ✅ SIN BORDE */
-  box-shadow: none !important; /* ✅ SIN SOMBRA */
+  border: none !important;
+  box-shadow: none !important;
   display: flex;
   align-items: center;
   gap: 8px;
   animation: slideDown 0.5s ease;
+  flex-wrap: wrap;
+  max-width: calc(100% - 100px);
 }
 
 @keyframes slideDown {
@@ -114,6 +116,7 @@ body {
 
 .header-info {
   flex: 1;
+  min-width: 150px;
 }
 
 .header h1 {
@@ -122,14 +125,14 @@ body {
   font-weight: 700;
   margin: 0 0 4px 0;
   text-shadow: 0 2px 10px rgba(0, 0, 0, 1), 
-               0 0 20px rgba(2, 238, 240, 0.5); /* ✅ Sombra fuerte para legibilidad */
+               0 0 20px rgba(2, 238, 240, 0.5);
   letter-spacing: 0.5px;
 }
 
 .header .status {
   color: var(--muted);
   font-size: 12px;
-  text-shadow: 0 2px 8px rgba(0, 0, 0, 1); /* ✅ Sombra fuerte */
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 1);
 }
 
 .header .status.detecting {
@@ -139,6 +142,7 @@ body {
 .controls {
   display: flex;
   gap: 6px;
+  flex-wrap: wrap;
 }
 
 /* ============================================
@@ -154,6 +158,7 @@ body {
   cursor: pointer;
   transition: all 0.3s;
   text-shadow: 0 2px 8px rgba(0, 0, 0, 1);
+  white-space: nowrap;
 }
 
 .btn-control:hover {
@@ -163,6 +168,20 @@ body {
 
 .btn-control:active {
   transform: scale(0.95);
+}
+
+/* ⭐ NUEVOS: Estilos para botones de zoom */
+.btn-zoom {
+  padding: 6px 10px;
+  font-size: 14px;
+  border-radius: 6px;
+  min-width: 32px;
+  text-align: center;
+}
+
+.btn-zoom:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 .btn-fullscreen {
@@ -187,6 +206,27 @@ body {
 .btn-fullscreen:hover {
   transform: scale(1.15);
   filter: brightness(1.3);
+}
+
+/* ============================================
+   INDICADOR DE ZOOM - ⭐ NUEVO
+   ============================================ */
+.zoom-indicator {
+  position: fixed;
+  bottom: 60px;
+  left: 10px;
+  z-index: 99;
+  background: transparent !important;
+  color: var(--brand);
+  font-size: 12px;
+  padding: 8px 0;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 1);
+  opacity: 0.7;
+  transition: opacity 0.3s;
+}
+
+.zoom-indicator:hover {
+  opacity: 1;
 }
 
 /* ============================================
@@ -346,7 +386,7 @@ body {
 }
 
 /* ============================================
-   TÍTULO DE PLANTA
+   TÍTULO DE PLANTA - ⭐ CON TIPO DE PLANTA
    ============================================ */
 .plant-title {
   background: transparent !important;
@@ -361,6 +401,7 @@ body {
   box-shadow: none !important;
   margin-bottom: 8px;
   border-bottom: 1px solid rgba(2, 238, 240, 0.3);
+  flex-wrap: wrap-reverse;
 }
 
 .plant-name {
@@ -371,6 +412,14 @@ body {
   letter-spacing: 0.5px;
   text-shadow: 0 2px 6px rgba(0, 0, 0, 1);
   text-align: right;
+}
+
+/* ⭐ NUEVO: Estilo para tipo de planta */
+.plant-type {
+  color: var(--success);
+  font-size: 12px;
+  text-shadow: 0 2px 6px rgba(0, 0, 0, 1);
+  display: none; /* Se muestra dinámicamente si hay tipo */
 }
 
 .plant-confidence {
@@ -457,18 +506,18 @@ body {
   left: 50%;
   transform: translateX(-50%);
   z-index: 100;
-  background: none !important; /* ✅ SIN FONDO */
+  background: none !important;
   color: var(--brand);
-  padding: 0; /* ✅ SIN PADDING */
+  padding: 0;
   border-radius: 0;
   font-size: 16px;
   font-weight: 700;
   max-width: 90%;
   text-align: center;
-  box-shadow: none !important; /* ✅ SIN SOMBRA DE CAJA */
+  box-shadow: none !important;
   transition: all 0.3s;
   text-shadow: 0 2px 10px rgba(0, 0, 0, 1),
-               0 0 20px rgba(2, 238, 240, 0.5); /* ✅ Solo sombra de texto para legibilidad */
+               0 0 20px rgba(2, 238, 240, 0.5);
   letter-spacing: 0.5px;
 }
 
@@ -526,6 +575,12 @@ body {
   .instructions {
     font-size: 14px;
   }
+
+  .btn-zoom {
+    padding: 5px 8px;
+    font-size: 12px;
+    min-width: 28px;
+  }
 }
 
 @media (max-width: 480px) {
@@ -551,5 +606,15 @@ body {
 
   .instructions {
     font-size: 13px;
+  }
+
+  .btn-zoom {
+    padding: 4px 6px;
+    font-size: 11px;
+    min-width: 24px;
+  }
+
+  .zoom-indicator {
+    font-size: 10px;
   }
 }

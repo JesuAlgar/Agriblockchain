@@ -21,7 +21,7 @@
   <!-- Estilos -->
   <link rel="stylesheet" href="./css/styles.css">
   
-  <!-- ⭐ NUEVO: Ethers.js para blockchain -->
+  <!-- ⭐ Ethers.js para blockchain -->
   <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
   
   <!-- TensorFlow.js y COCO-SSD -->
@@ -62,6 +62,12 @@
       <div class="status" id="status">Inicializando...</div>
     </div>
     <div class="controls">
+      <!-- ⭐ NUEVOS: Botones de zoom -->
+      <button class="btn-control btn-zoom" id="btnZoomOut" title="Zoom menos (−)">🔍−</button>
+      <button class="btn-control btn-zoom" id="btnZoomIn" title="Zoom más (+)">🔍+</button>
+      <button class="btn-control btn-zoom" id="btnZoomReset" title="Reset zoom">↺</button>
+      
+      <!-- Botones originales -->
       <button class="btn-control" id="btnTheme" title="Cambiar tema">🌓</button>
     </div>
   </div>
@@ -84,7 +90,12 @@
 
   <!-- Instrucciones (transparente, centro inferior) -->
   <div class="instructions" id="instructions">
-    📷 Apunta la cámara a plantas en maceta
+    📷 Apunta la cámara a plantas, árboles o arbustos
+  </div>
+
+  <!-- ⭐ NUEVO: Indicador de zoom (opcional, esquina inferior izquierda) -->
+  <div class="zoom-indicator" id="zoomIndicator">
+    🔍 Zoom: 1.0x
   </div>
 
   <!-- Botón pantalla completa (transparente) -->

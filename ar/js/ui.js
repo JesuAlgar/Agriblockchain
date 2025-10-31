@@ -1,9 +1,10 @@
 // ============================================
-// GESTOR DE INTERFAZ DE USUARIO
+// GESTOR DE INTERFAZ DE USUARIO CON ZOOM
 // ============================================
 
 import { CONFIG, STATE } from './config.js';
 import { getCachedPlantData } from './dataManager.js';
+import { increaseZoom, decreaseZoom, resetZoom } from './camera.js';
 
 /**
  * Muestra una alerta flotante
@@ -31,13 +32,13 @@ export function updateInstructions(plantCount) {
   if (!instructions) return;
   
   if (plantCount === 0) {
-    instructions.textContent = '🔍 Buscando plantas...';
+    instructions.textContent = '🔍 Buscando plantas y árboles...';
     instructions.classList.remove('success');
   } else if (plantCount === 1) {
-    instructions.textContent = '✅ Planta detectada';
+    instructions.textContent = '✅ Planta/Árbol detectado';
     instructions.classList.add('success');
   } else {
-    instructions.textContent = `✅ ${plantCount} plantas detectadas`;
+    instructions.textContent = `✅ ${plantCount} plantas/árboles detectados`;
     instructions.classList.add('success');
   }
 }
@@ -87,6 +88,7 @@ function createPanelStructure(panelId) {
   panel.innerHTML = `
     <div class="plant-title">
       <div class="plant-name" data-field="seedVariety">--</div>
+      <div class="plant-type" data-field="plantType">--</div>
       <div class="plant-confidence" data-field="confidence">--</div>
     </div>
     
@@ -249,16 +251,24 @@ function createPanelStructure(panelId) {
 }
 
 /**
- * Actualiza solo los valores del panel (sin recrear HTML)
+ * ⭐ MEJORADO: Actualiza solo los valores del panel (sin recrear HTML)
  * @param {HTMLElement} panel - Panel existente
  * @param {object} data - Datos
  * @param {number} confidence - Confianza
  * @param {number} plantIndex - Índice de la planta
+ * @param {string} plantType - Tipo de planta detectada (ej: "🌳 Árbol")
  */
-function updatePanelValues(panel, data, confidence, plantIndex) {
+function updatePanelValues(panel, data, confidence, plantIndex, plantType = '') {
   // Actualizar título con variedad de semilla
   panel.querySelector('[data-field="seedVariety"]').textContent = 
     data.seedVariety || `Planta ${plantIndex + 1}`;
+  
+  // ⭐ NUEVO: Mostrar tipo de planta detectada
+  if (plantType) {
+    panel.querySelector('[data-field="plantType"]').textContent = plantType;
+    panel.querySelector('[data-field="plantType"]').style.display = 'block';
+  }
+  
   panel.querySelector('[data-field="confidence"]').textContent = 
     `${Math.round(confidence * 100)}%`;
   
@@ -310,14 +320,15 @@ function updatePanelValues(panel, data, confidence, plantIndex) {
 }
 
 /**
- * Crea o actualiza el panel de datos de una planta
+ * ⭐ MEJORADO: Crea o actualiza el panel de datos de una planta
  * @param {number} plantIndex - Índice de la planta
  * @param {Array} bbox - Bounding box [x, y, width, height]
  * @param {number} confidence - Confianza de la detección (0-1)
  * @param {object} data - Datos
+ * @param {string} plantType - Tipo de planta detectada (ej: "🌳 Árbol")
  * @returns {HTMLElement} - Panel creado/actualizado
  */
-export function createOrUpdatePanel(plantIndex, bbox, confidence, data) {
+export function createOrUpdatePanel(plantIndex, bbox, confidence, data, plantType = '') {
   const panelId = `panel-${plantIndex}`;
   let panel = document.getElementById(panelId);
 
@@ -328,7 +339,7 @@ export function createOrUpdatePanel(plantIndex, bbox, confidence, data) {
   }
 
   // Actualizar solo los valores (sin recrear HTML)
-  updatePanelValues(panel, data, confidence, plantIndex);
+  updatePanelValues(panel, data, confidence, plantIndex, plantType);
 
   // Posicionar panel (FIJO en esquina superior derecha)
   positionPanel(panel, bbox);
@@ -347,15 +358,15 @@ export function createOrUpdatePanel(plantIndex, bbox, confidence, data) {
  * @param {Array} bbox - Bounding box (no usado)
  */
 function positionPanel(panel, bbox) {
-  // ⭐ POSICIÓN FIJA: ESQUINA SUPERIOR DERECHA
+  // Posición fija: ESQUINA SUPERIOR DERECHA (debajo de los controles de zoom)
   panel.style.position = 'fixed';
-  panel.style.top = '80px';      // Debajo del header
+  panel.style.top = '120px';     // Debajo del header + botones zoom
   panel.style.right = '10px';    // Pegado a la derecha
   panel.style.left = 'auto';
   panel.style.bottom = 'auto';
   panel.style.transform = 'none';
   panel.style.maxWidth = '280px';
-  panel.style.maxHeight = 'calc(100vh - 180px)';
+  panel.style.maxHeight = 'calc(100vh - 200px)';
   panel.style.overflowY = 'auto';
 }
 
@@ -367,7 +378,7 @@ export function hideInactivePanels(activePanelIndices) {
   document.querySelectorAll('.data-panel').forEach(panel => {
     const panelIndex = parseInt(panel.id.split('-')[1]);
     
-    // ⭐ FORZAR: Solo permitir panel-0, eliminar cualquier otro
+    // Solo permitir panel-0, eliminar cualquier otro
     if (panelIndex !== 0 || !activePanelIndices.has(panelIndex)) {
       panel.classList.remove('visible');
       
@@ -397,5 +408,18 @@ export function toggleFullscreen() {
     document.documentElement.requestFullscreen();
   } else {
     document.exitFullscreen();
+  }
+}
+
+/**
+ * ⭐ NUEVA: Maneja zoom de la cámara
+ */
+export async function handleZoom(direction) {
+  if (direction === 'in') {
+    await increaseZoom(CONFIG.camera.zoomStep);
+  } else if (direction === 'out') {
+    await decreaseZoom(CONFIG.camera.zoomStep);
+  } else if (direction === 'reset') {
+    await resetZoom();
   }
 }

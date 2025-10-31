@@ -1,5 +1,5 @@
 // ============================================
-// CONFIGURACIÓN GLOBAL
+// CONFIGURACIÓN GLOBAL MEJORADA
 // ============================================
 
 export const CONFIG = {
@@ -15,17 +15,45 @@ export const CONFIG = {
     battery_pct: { min: 20, max: 100 }
   },
   
-  // Configuración de cámara
+  // ⭐ MEJORADO: Configuración de cámara CON ZOOM
   camera: {
     facingMode: 'environment',
     idealWidth: 1280,
-    idealHeight: 720
+    idealHeight: 720,
+    zoomLevel: 1, // ⭐ NUEVO: Nivel de zoom inicial
+    zoomStep: 0.2, // ⭐ NUEVO: Paso de zoom (20%)
+    minZoom: 1,
+    maxZoom: 4
   },
   
   // Configuración del modelo de IA
   model: {
     base: 'mobilenet_v2',
-    plantClasses: ['potted plant', 'vase', 'plant']
+    
+    // ⭐ EXPANDIDO: Ahora detecta PLANTAS, ÁRBOLES y ARBUSTOS
+    // Clases que detecta COCO-SSD
+    plantClasses: [
+      // Plantas pequeñas/macetas
+      'potted plant',
+      'vase',
+      'plant',
+      
+      // ⭐ NUEVAS: Plantas y árboles más grandes
+      'tree',          // Árboles
+      'bush',          // Arbustos
+      'shrub',         // Arbustos (alias)
+      'cactus',        // Cactus
+      'succulent',     // Plantas suculentas
+      'fern',          // Helechos
+      'herb',          // Plantas de hierba
+      'flower',        // Flores grandes
+      'ivy',           // Hiedra
+      'climbing plant' // Plantas trepadoras
+    ],
+    
+    // ⭐ NUEVO: Umbral mínimo de confianza (0-1)
+    // Más bajo = más detecciones, más alto = solo las muy seguras
+    confidenceThreshold: 0.4 // 40% de confianza mínima
   },
   
   // Configuración de UI
@@ -36,36 +64,36 @@ export const CONFIG = {
     alertCooldown: 30000
   },
   
-  // ⭐ CONFIGURACIÓN BLOCKCHAIN CON ANKR
-blockchain: {
-  mode: 'BLOCKCHAIN',
-  
-  network: {
-    name: 'Sepolia',
-    chainId: 11155111,
-    chainIdHex: '0xaa36a7',
-    rpcUrl: 'https://eth-sepolia.g.alchemy.com/v2/8jUDyP_I-VJU40ZtPzxDM'  // ⭐ TU API KEY
-  },
-  
-  contractAddress: '0x2299b2eEc07A9c406C2688EeB6c7c74f92e3dA42',
-  
-  contractABI: [
-    {
-      "inputs": [{"internalType": "string", "name": "_plantId", "type": "string"}],
-      "name": "getPlantData",
-      "outputs": [{"internalType": "string", "name": "", "type": "string"}],
-      "stateMutability": "view",
-      "type": "function"
+  // Configuración blockchain
+  blockchain: {
+    mode: 'BLOCKCHAIN',
+    
+    network: {
+      name: 'Sepolia',
+      chainId: 11155111,
+      chainIdHex: '0xaa36a7',
+      rpcUrl: 'https://eth-sepolia.g.alchemy.com/v2/8jUDyP_I-VJU40ZtPzxDM'
     },
-    {
-      "inputs": [{"internalType": "string", "name": "_plantId", "type": "string"}],
-      "name": "plantExists",
-      "outputs": [{"internalType": "bool", "name": "", "type": "bool"}],
-      "stateMutability": "view",
-      "type": "function"
-    }
-  ]
-}
+    
+    contractAddress: '0x2299b2eEc07A9c406C2688EeB6c7c74f92e3dA42',
+    
+    contractABI: [
+      {
+        "inputs": [{"internalType": "string", "name": "_plantId", "type": "string"}],
+        "name": "getPlantData",
+        "outputs": [{"internalType": "string", "name": "", "type": "string"}],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [{"internalType": "string", "name": "_plantId", "type": "string"}],
+        "name": "plantExists",
+        "outputs": [{"internalType": "bool", "name": "", "type": "bool"}],
+        "stateMutability": "view",
+        "type": "function"
+      }
+    ]
+  }
 };
 
 // Obtener ID de planta desde URL
@@ -74,7 +102,7 @@ export function getPlantIdFromURL() {
   return params.get('id') || 'planta01';
 }
 
-// Estado global compartido
+// ⭐ MEJORADO: Estado global compartido
 export const STATE = {
   currentTheme: 'dark',
   model: null,
@@ -82,9 +110,16 @@ export const STATE = {
   canvas: null,
   ctx: null,
   container: null,
+  stream: null, // ⭐ NUEVO: Stream de video
   lastDetectionTime: 0,
   detectionCount: 0,
   alertShown: new Set(),
+  
+  // ⭐ NUEVO: Capacidades de zoom
+  cameraZoomCapabilities: {
+    supported: false,
+    currentZoom: 1
+  },
   
   // Estado blockchain
   blockchainProvider: null,

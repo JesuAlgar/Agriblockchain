@@ -1,5 +1,5 @@
 // ============================================
-// DETECTOR DE PLANTAS CON IA
+// DETECTOR DE PLANTAS Y ÁRBOLES CON IA
 // ============================================
 
 import { CONFIG, STATE } from './config.js';
@@ -36,11 +36,12 @@ export async function loadModel() {
     }
     
     if (statusElement) {
-      statusElement.textContent = '✓ IA lista - Buscando plantas...';
+      statusElement.textContent = '✓ IA lista - Buscando plantas y árboles...';
       statusElement.classList.add('detecting');
     }
     
     log('✓ Modelo COCO-SSD cargado correctamente');
+    log(`✓ Detectando: ${CONFIG.model.plantClasses.join(', ')}`);
     
   } catch (err) {
     log(`Error al cargar el modelo: ${err.message}`, 'error');
@@ -61,14 +62,50 @@ export async function loadModel() {
  * @param {string} color - Color del bounding box
  */
 function drawBoundingBox(bbox, label, color = '#02eef0') {
-  // ⭐ OPCIÓN 3: NO DIBUJAR NADA
-  // El sistema detecta pero no muestra ningún indicador visual
+  // INVISIBLE: El sistema detecta pero no muestra ningún indicador visual
   // Solo se verán los datos en la esquina superior derecha
   return;
 }
 
 /**
- * Loop principal de detección
+ * ⭐ NUEVA: Verifica si un objeto detectado es una planta/árbol válido
+ * @param {object} prediction - Predicción del modelo
+ * @returns {boolean}
+ */
+function isValidPlant(prediction) {
+  const isPlantClass = CONFIG.model.plantClasses.includes(prediction.class);
+  const meetsConfidence = prediction.score >= CONFIG.model.confidenceThreshold;
+  
+  return isPlantClass && meetsConfidence;
+}
+
+/**
+ * ⭐ NUEVA: Obtiene el tipo de planta/árbol detectado
+ * @param {string} plantClass - Clase detectada
+ * @returns {string} - Emoji + nombre
+ */
+function getPlantTypeLabel(plantClass) {
+  const labels = {
+    'tree': '🌳 Árbol',
+    'bush': '🌿 Arbusto',
+    'shrub': '🌿 Arbusto',
+    'potted plant': '🪴 Planta en Maceta',
+    'plant': '🌱 Planta',
+    'vase': '🏺 Planta en Macetero',
+    'cactus': '🌵 Cactus',
+    'succulent': '🪴 Suculenta',
+    'fern': '🌿 Helecho',
+    'herb': '🌿 Hierba',
+    'flower': '🌸 Flor',
+    'ivy': '🍃 Hiedra',
+    'climbing plant': '🍃 Planta Trepadora'
+  };
+  
+  return labels[plantClass] || `🌱 ${plantClass}`;
+}
+
+/**
+ * Loop principal de detección MEJORADO
  */
 export async function detect() {
   // Verificar que todo esté listo
@@ -94,20 +131,29 @@ export async function detect() {
     // Limpiar canvas
     STATE.ctx.clearRect(0, 0, STATE.canvas.width, STATE.canvas.height);
 
-    // Filtrar solo plantas
-    const plants = predictions.filter(p => 
-      CONFIG.model.plantClasses.includes(p.class)
-    );
+    // ⭐ MEJORADO: Filtrar plantas/árboles válidos usando la función mejorada
+    const plants = predictions.filter(p => isValidPlant(p));
 
-    // ⭐ TOMAR SOLO LA PLANTA CON MAYOR CONFIANZA (evitar solapamientos)
+    // ⭐ Ordenar por confianza (de mayor a menor)
+    plants.sort((a, b) => b.score - a.score);
+
+    // Logging detallado
+    if (plants.length > 0) {
+      log(`🔍 Detectados ${plants.length} objeto(s):`);
+      plants.forEach((p, i) => {
+        log(`   ${i + 1}. ${p.class} (${(p.score * 100).toFixed(1)}%)`);
+      });
+    }
+
+    // ⭐ Tomar solo la planta con mayor confianza (evitar solapamientos)
     const bestPlant = plants.length > 0 
-      ? [plants.reduce((best, current) => current.score > best.score ? current : best)]
+      ? [plants[0]]
       : [];
 
     // Actualizar instrucciones
     updateInstructions(bestPlant.length);
 
-    // ⭐ LIMPIAR tracking de plantas antiguas (solo mantenemos índice 0)
+    // Limpiar tracking de plantas antiguas (solo mantenemos índice 0)
     plantLastSeen.forEach((lastSeen, plantIndex) => {
       if (plantIndex !== 0) {
         plantLastSeen.delete(plantIndex);
@@ -124,15 +170,17 @@ export async function detect() {
       // Actualizar timestamp de última vez vista
       plantLastSeen.set(plantIndex, now);
 
-      // Dibujar bounding box (OPCIÓN 3: no dibuja nada)
-      const label = plant.class;
-      drawBoundingBox(plant.bbox, label);
+      // Dibujar bounding box (INVISIBLE)
+      drawBoundingBox(plant.bbox, plant.class);
 
       // Cargar datos de la planta (usa caché automáticamente)
       const data = await loadPlantData(plantIndex);
       
+      // ⭐ NUEVO: Pasar información de tipo de planta detectado
+      const plantType = getPlantTypeLabel(plant.class);
+      
       // Crear/actualizar panel de datos
-      createOrUpdatePanel(plantIndex, plant.bbox, plant.score, data);
+      createOrUpdatePanel(plantIndex, plant.bbox, plant.score, data, plantType);
       activePanels.add(plantIndex);
     }
 
