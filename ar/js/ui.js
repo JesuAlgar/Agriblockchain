@@ -1,15 +1,12 @@
 // ============================================
-// GESTOR DE INTERFAZ DE USUARIO CON ZOOM
+// GESTOR DE INTERFAZ DE USUARIO - OPTIMIZADO
 // ============================================
 
 import { CONFIG, STATE } from './config.js';
 import { getCachedPlantData } from './dataManager.js';
-import { increaseZoom, decreaseZoom, resetZoom } from './camera.js';
 
 /**
  * Muestra una alerta flotante
- * @param {string} message - Mensaje de la alerta
- * @param {string} type - Tipo: 'danger' o 'warning'
  */
 export function showAlert(message, type = 'danger') {
   const banner = document.getElementById('alertBanner');
@@ -25,29 +22,25 @@ export function showAlert(message, type = 'danger') {
 
 /**
  * Actualiza el mensaje de instrucciones
- * @param {number} plantCount - Cantidad de plantas detectadas
  */
 export function updateInstructions(plantCount) {
   const instructions = document.getElementById('instructions');
   if (!instructions) return;
   
   if (plantCount === 0) {
-    instructions.textContent = '🔍 Buscando plantas y árboles...';
+    instructions.textContent = '🔍 Buscando plantas...';
     instructions.classList.remove('success');
   } else if (plantCount === 1) {
-    instructions.textContent = '✅ Planta/Árbol detectado';
+    instructions.textContent = '✅ Planta detectada';
     instructions.classList.add('success');
   } else {
-    instructions.textContent = `✅ ${plantCount} plantas/árboles detectados`;
+    instructions.textContent = `✅ ${plantCount} plantas detectadas`;
     instructions.classList.add('success');
   }
 }
 
 /**
  * Formatea un valor con unidad
- * @param {*} value - Valor a formatear
- * @param {string} unit - Unidad
- * @returns {string}
  */
 function formatValue(value, unit = '') {
   if (value === undefined || value === null) return '--';
@@ -56,8 +49,6 @@ function formatValue(value, unit = '') {
 
 /**
  * Formatea fecha ISO a formato legible
- * @param {string} isoString - Fecha en formato ISO
- * @returns {string}
  */
 function formatTimestamp(isoString) {
   if (!isoString) return '--';
@@ -76,9 +67,25 @@ function formatTimestamp(isoString) {
 }
 
 /**
+ * ✨ NUEVA: Detecta si el panel tiene scroll y añade clase
+ */
+function checkPanelScroll(panel) {
+  if (!panel) return;
+  
+  // Esperar un frame para que el navegador calcule las dimensiones
+  requestAnimationFrame(() => {
+    const hasScroll = panel.scrollHeight > panel.clientHeight;
+    
+    if (hasScroll) {
+      panel.classList.add('has-scroll');
+    } else {
+      panel.classList.remove('has-scroll');
+    }
+  });
+}
+
+/**
  * Crea el HTML inicial del panel (solo una vez)
- * @param {string} panelId - ID del panel
- * @returns {HTMLElement} - Panel creado
  */
 function createPanelStructure(panelId) {
   const panel = document.createElement('div');
@@ -88,7 +95,6 @@ function createPanelStructure(panelId) {
   panel.innerHTML = `
     <div class="plant-title">
       <div class="plant-name" data-field="seedVariety">--</div>
-      <div class="plant-type" data-field="plantType">--</div>
       <div class="plant-confidence" data-field="confidence">--</div>
     </div>
     
@@ -251,28 +257,14 @@ function createPanelStructure(panelId) {
 }
 
 /**
- * ⭐ MEJORADO: Actualiza solo los valores del panel (sin recrear HTML)
- * @param {HTMLElement} panel - Panel existente
- * @param {object} data - Datos
- * @param {number} confidence - Confianza
- * @param {number} plantIndex - Índice de la planta
- * @param {string} plantType - Tipo de planta detectada (ej: "🌳 Árbol")
+ * Actualiza solo los valores del panel (sin recrear HTML)
  */
-function updatePanelValues(panel, data, confidence, plantIndex, plantType = '') {
-  // Actualizar título con variedad de semilla
+function updatePanelValues(panel, data, confidence, plantIndex) {
   panel.querySelector('[data-field="seedVariety"]').textContent = 
     data.seedVariety || `Planta ${plantIndex + 1}`;
-  
-  // ⭐ NUEVO: Mostrar tipo de planta detectada
-  if (plantType) {
-    panel.querySelector('[data-field="plantType"]').textContent = plantType;
-    panel.querySelector('[data-field="plantType"]').style.display = 'block';
-  }
-  
   panel.querySelector('[data-field="confidence"]').textContent = 
     `${Math.round(confidence * 100)}%`;
   
-  // Actualizar TODOS los campos
   panel.querySelector('[data-field="eventType"]').textContent = 
     data.eventType || '--';
   
@@ -320,15 +312,9 @@ function updatePanelValues(panel, data, confidence, plantIndex, plantType = '') 
 }
 
 /**
- * ⭐ MEJORADO: Crea o actualiza el panel de datos de una planta
- * @param {number} plantIndex - Índice de la planta
- * @param {Array} bbox - Bounding box [x, y, width, height]
- * @param {number} confidence - Confianza de la detección (0-1)
- * @param {object} data - Datos
- * @param {string} plantType - Tipo de planta detectada (ej: "🌳 Árbol")
- * @returns {HTMLElement} - Panel creado/actualizado
+ * ✨ MEJORADO: Crea o actualiza el panel de datos de una planta
  */
-export function createOrUpdatePanel(plantIndex, bbox, confidence, data, plantType = '') {
+export function createOrUpdatePanel(plantIndex, bbox, confidence, data) {
   const panelId = `panel-${plantIndex}`;
   let panel = document.getElementById(panelId);
 
@@ -338,51 +324,51 @@ export function createOrUpdatePanel(plantIndex, bbox, confidence, data, plantTyp
     STATE.container.appendChild(panel);
   }
 
-  // Actualizar solo los valores (sin recrear HTML)
-  updatePanelValues(panel, data, confidence, plantIndex, plantType);
+  // Actualizar valores
+  updatePanelValues(panel, data, confidence, plantIndex);
 
-  // Posicionar panel (FIJO en esquina superior derecha)
+  // Posicionar panel
   positionPanel(panel, bbox);
   
-  // Hacer visible con animación suave
+  // Hacer visible con animación
   if (!panel.classList.contains('visible')) {
     panel.classList.add('visible');
   }
+
+  // ✨ NUEVO: Verificar si necesita scroll después de actualizar
+  checkPanelScroll(panel);
 
   return panel;
 }
 
 /**
- * Posiciona el panel en la ESQUINA SUPERIOR DERECHA (posición fija)
- * @param {HTMLElement} panel - Panel a posicionar
- * @param {Array} bbox - Bounding box (no usado)
+ * Posiciona el panel en la esquina superior derecha (fijo)
  */
 function positionPanel(panel, bbox) {
-  // Posición fija: ESQUINA SUPERIOR DERECHA (debajo de los controles de zoom)
   panel.style.position = 'fixed';
-  panel.style.top = '120px';     // Debajo del header + botones zoom
-  panel.style.right = '10px';    // Pegado a la derecha
+  panel.style.top = '80px';
+  panel.style.right = '10px';
   panel.style.left = 'auto';
   panel.style.bottom = 'auto';
   panel.style.transform = 'none';
   panel.style.maxWidth = '280px';
-  panel.style.maxHeight = 'calc(100vh - 200px)';
+  panel.style.maxHeight = 'calc(100vh - 100px)';
+  
+  // ✨ ASEGURAR QUE EL SCROLL FUNCIONE
   panel.style.overflowY = 'auto';
+  panel.style.overflowX = 'hidden';
 }
 
 /**
  * Oculta y elimina paneles inactivos
- * @param {Set} activePanelIndices - Set con índices de paneles activos
  */
 export function hideInactivePanels(activePanelIndices) {
   document.querySelectorAll('.data-panel').forEach(panel => {
     const panelIndex = parseInt(panel.id.split('-')[1]);
     
-    // Solo permitir panel-0, eliminar cualquier otro
     if (panelIndex !== 0 || !activePanelIndices.has(panelIndex)) {
       panel.classList.remove('visible');
       
-      // Eliminar después de la animación
       setTimeout(() => {
         if (!panel.classList.contains('visible')) {
           panel.remove();
@@ -408,18 +394,5 @@ export function toggleFullscreen() {
     document.documentElement.requestFullscreen();
   } else {
     document.exitFullscreen();
-  }
-}
-
-/**
- * ⭐ NUEVA: Maneja zoom de la cámara
- */
-export async function handleZoom(direction) {
-  if (direction === 'in') {
-    await increaseZoom(CONFIG.camera.zoomStep);
-  } else if (direction === 'out') {
-    await decreaseZoom(CONFIG.camera.zoomStep);
-  } else if (direction === 'reset') {
-    await resetZoom();
   }
 }

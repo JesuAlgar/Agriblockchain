@@ -1,5 +1,5 @@
 // ============================================
-// DETECTOR DE PLANTAS Y ÁRBOLES CON IA
+// DETECTOR DE PLANTAS CON IA - OPTIMIZADO
 // ============================================
 
 import { CONFIG, STATE } from './config.js';
@@ -12,11 +12,12 @@ import {
 } from './ui.js';
 
 // Tracking de última detección de cada planta
-const plantLastSeen = new Map(); // Map<plantIndex, timestamp>
-const PANEL_PERSIST_TIME = 3000; // Tiempo que persiste el panel sin detección (3 segundos)
+const plantLastSeen = new Map();
+const PANEL_PERSIST_TIME = 3000;
 
 /**
- * Carga el modelo de detección COCO-SSD
+ * ✨ OPTIMIZADO: Carga el modelo de detección COCO-SSD
+ * Usa modelo más ligero en móviles para cargar más rápido
  * @returns {Promise<void>}
  */
 export async function loadModel() {
@@ -29,19 +30,38 @@ export async function loadModel() {
     }
     
     log('Cargando modelo COCO-SSD...');
-    STATE.model = await cocoSsd.load({ base: CONFIG.model.base });
+    
+    // ✨ OPTIMIZACIÓN 1: Detectar si es móvil
+    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    
+    // ✨ OPTIMIZACIÓN 2: Usar modelo más ligero en móvil
+    const modelConfig = {
+      base: isMobile ? 'lite_mobilenet_v2' : 'mobilenet_v2'  // lite = más rápido pero menos preciso
+    };
+    
+    log(`Dispositivo: ${isMobile ? 'Móvil' : 'PC'} - Usando modelo: ${modelConfig.base}`);
+    
+    // ✨ OPTIMIZACIÓN 3: Mostrar progreso de carga
+    if (loadingElement) {
+      const progressText = loadingElement.querySelector('small') || document.createElement('small');
+      progressText.textContent = isMobile 
+        ? 'Cargando modelo ligero para móvil...' 
+        : 'Cargando modelo completo...';
+      loadingElement.appendChild(progressText);
+    }
+    
+    STATE.model = await cocoSsd.load(modelConfig);
     
     if (loadingElement) {
       loadingElement.classList.add('hidden');
     }
     
     if (statusElement) {
-      statusElement.textContent = '✓ IA lista - Buscando plantas y árboles...';
+      statusElement.textContent = '✓ IA lista - Buscando plantas...';
       statusElement.classList.add('detecting');
     }
     
-    log('✓ Modelo COCO-SSD cargado correctamente');
-    log(`✓ Detectando: ${CONFIG.model.plantClasses.join(', ')}`);
+    log(`✓ Modelo COCO-SSD cargado correctamente (${modelConfig.base})`);
     
   } catch (err) {
     log(`Error al cargar el modelo: ${err.message}`, 'error');
@@ -56,56 +76,16 @@ export async function loadModel() {
 }
 
 /**
- * Dibuja un bounding box en el canvas (OPCIÓN 3: INVISIBLE - NO DIBUJA NADA)
- * @param {Array} bbox - [x, y, width, height]
- * @param {string} label - Etiqueta a mostrar
- * @param {string} color - Color del bounding box
+ * Dibuja un bounding box en el canvas (INVISIBLE)
  */
 function drawBoundingBox(bbox, label, color = '#02eef0') {
-  // INVISIBLE: El sistema detecta pero no muestra ningún indicador visual
-  // Solo se verán los datos en la esquina superior derecha
+  // No dibuja nada - solo detecta
   return;
 }
 
 /**
- * ⭐ NUEVA: Verifica si un objeto detectado es una planta/árbol válido
- * @param {object} prediction - Predicción del modelo
- * @returns {boolean}
- */
-function isValidPlant(prediction) {
-  const isPlantClass = CONFIG.model.plantClasses.includes(prediction.class);
-  const meetsConfidence = prediction.score >= CONFIG.model.confidenceThreshold;
-  
-  return isPlantClass && meetsConfidence;
-}
-
-/**
- * ⭐ NUEVA: Obtiene el tipo de planta/árbol detectado
- * @param {string} plantClass - Clase detectada
- * @returns {string} - Emoji + nombre
- */
-function getPlantTypeLabel(plantClass) {
-  const labels = {
-    'tree': '🌳 Árbol',
-    'bush': '🌿 Arbusto',
-    'shrub': '🌿 Arbusto',
-    'potted plant': '🪴 Planta en Maceta',
-    'plant': '🌱 Planta',
-    'vase': '🏺 Planta en Macetero',
-    'cactus': '🌵 Cactus',
-    'succulent': '🪴 Suculenta',
-    'fern': '🌿 Helecho',
-    'herb': '🌿 Hierba',
-    'flower': '🌸 Flor',
-    'ivy': '🍃 Hiedra',
-    'climbing plant': '🍃 Planta Trepadora'
-  };
-  
-  return labels[plantClass] || `🌱 ${plantClass}`;
-}
-
-/**
- * Loop principal de detección MEJORADO
+ * ✨ OPTIMIZADO: Loop principal de detección
+ * Ajusta automáticamente la frecuencia según el dispositivo
  */
 export async function detect() {
   // Verificar que todo esté listo
@@ -116,8 +96,12 @@ export async function detect() {
 
   const now = Date.now();
   
+  // ✨ OPTIMIZACIÓN 4: Intervalo dinámico según dispositivo
+  const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+  const detectionInterval = isMobile ? 1200 : CONFIG.detectionInterval; // Móvil: más lento para ahorrar batería
+  
   // Limitar frecuencia de detección
-  if (now - STATE.lastDetectionTime < CONFIG.detectionInterval) {
+  if (now - STATE.lastDetectionTime < detectionInterval) {
     requestAnimationFrame(detect);
     return;
   }
@@ -131,29 +115,20 @@ export async function detect() {
     // Limpiar canvas
     STATE.ctx.clearRect(0, 0, STATE.canvas.width, STATE.canvas.height);
 
-    // ⭐ MEJORADO: Filtrar plantas/árboles válidos usando la función mejorada
-    const plants = predictions.filter(p => isValidPlant(p));
+    // Filtrar solo plantas
+    const plants = predictions.filter(p => 
+      CONFIG.model.plantClasses.includes(p.class)
+    );
 
-    // ⭐ Ordenar por confianza (de mayor a menor)
-    plants.sort((a, b) => b.score - a.score);
-
-    // Logging detallado
-    if (plants.length > 0) {
-      log(`🔍 Detectados ${plants.length} objeto(s):`);
-      plants.forEach((p, i) => {
-        log(`   ${i + 1}. ${p.class} (${(p.score * 100).toFixed(1)}%)`);
-      });
-    }
-
-    // ⭐ Tomar solo la planta con mayor confianza (evitar solapamientos)
+    // Tomar solo la planta con mayor confianza
     const bestPlant = plants.length > 0 
-      ? [plants[0]]
+      ? [plants.reduce((best, current) => current.score > best.score ? current : best)]
       : [];
 
     // Actualizar instrucciones
     updateInstructions(bestPlant.length);
 
-    // Limpiar tracking de plantas antiguas (solo mantenemos índice 0)
+    // Limpiar tracking de plantas antiguas
     plantLastSeen.forEach((lastSeen, plantIndex) => {
       if (plantIndex !== 0) {
         plantLastSeen.delete(plantIndex);
@@ -162,42 +137,38 @@ export async function detect() {
 
     const activePanels = new Set();
 
-    // Procesar la planta detectada (solo una)
+    // Procesar la planta detectada
     if (bestPlant.length > 0) {
       const plant = bestPlant[0];
-      const plantIndex = 0; // Siempre índice 0 porque solo mostramos una planta
+      const plantIndex = 0;
 
-      // Actualizar timestamp de última vez vista
+      // Actualizar timestamp
       plantLastSeen.set(plantIndex, now);
 
-      // Dibujar bounding box (INVISIBLE)
-      drawBoundingBox(plant.bbox, plant.class);
+      // Dibujar bounding box (invisible)
+      const label = plant.class;
+      drawBoundingBox(plant.bbox, label);
 
-      // Cargar datos de la planta (usa caché automáticamente)
+      // Cargar datos de la planta
       const data = await loadPlantData(plantIndex);
       
-      // ⭐ NUEVO: Pasar información de tipo de planta detectado
-      const plantType = getPlantTypeLabel(plant.class);
-      
       // Crear/actualizar panel de datos
-      createOrUpdatePanel(plantIndex, plant.bbox, plant.score, data, plantType);
+      createOrUpdatePanel(plantIndex, plant.bbox, plant.score, data);
       activePanels.add(plantIndex);
     }
 
-    // Mantener paneles visibles aunque no se detecten (por PANEL_PERSIST_TIME ms)
+    // Mantener paneles visibles aunque no se detecten
     plantLastSeen.forEach((lastSeen, plantIndex) => {
       const timeSinceLastSeen = now - lastSeen;
       
       if (timeSinceLastSeen < PANEL_PERSIST_TIME) {
-        // Panel todavía debe estar visible
         activePanels.add(plantIndex);
       } else {
-        // Panel ha expirado, remover del tracking
         plantLastSeen.delete(plantIndex);
       }
     });
 
-    // Ocultar paneles de plantas que ya no se detectan y han expirado
+    // Ocultar paneles inactivos
     hideInactivePanels(activePanels);
 
   } catch (err) {
@@ -212,6 +183,5 @@ export async function detect() {
  * Detiene el loop de detección
  */
 export function stopDetection() {
-  // El loop se detendrá automáticamente al no llamar requestAnimationFrame
   log('Detección detenida');
 }
