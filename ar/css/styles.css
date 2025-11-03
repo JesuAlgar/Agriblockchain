@@ -10,7 +10,7 @@
 :root {
   --primary: #02eef0;
   --bg-dark: #0b0f14;
-  --bg-card: rgba(11, 15, 20, 0.95);
+  --bg-card: rgba(11, 15, 20, 0.5);
   --text: #ffffff;
   --muted: #8b9aa8;
   --success: #6ee7b7;
@@ -54,7 +54,7 @@ body {
   width: 100%;
   height: 100%;
   object-fit: cover;
-  transform: scaleX(-1);
+  transform: none;
 }
 
 #canvas {
@@ -556,7 +556,7 @@ body {
 
 [data-theme="light"] {
   --bg-dark: #f3f4f6;
-  --bg-card: rgba(255, 255, 255, 0.95);
+  --bg-card: rgba(255, 255, 255, 0.6);
   --text: #1f2937;
   --muted: #6b7280;
   --border: rgba(0, 0, 0, 0.1);

@@ -2,10 +2,10 @@
 // APLICACIÓN PRINCIPAL
 // ============================================
 
-import { STATE } from './config.js';
+import { CONFIG, STATE } from './config.js';
 import { log } from './utils.js';
 import { preloadPlantData } from './dataManager.js';
-import { startCamera } from './camera.js';
+import { startCamera, increaseZoom, decreaseZoom, resetZoom, getCurrentZoom } from './camera.js';
 import { loadModel, detect } from './detector.js';
 import { toggleTheme, toggleFullscreen } from './ui.js';
 
@@ -25,6 +25,45 @@ function initControls() {
   if (btnFullscreen) {
     btnFullscreen.addEventListener('click', toggleFullscreen);
     log('✓ Control de pantalla completa inicializado');
+  }
+}
+
+// Controles de zoom
+function initZoomControls() {
+  const btnZoomIn = document.getElementById('btnZoomIn');
+  if (btnZoomIn) {
+    btnZoomIn.addEventListener('click', async () => {
+      await increaseZoom(CONFIG.camera.zoomStep);
+      updateZoomIndicator();
+    });
+    log('Control Zoom + inicializado');
+  }
+  const btnZoomOut = document.getElementById('btnZoomOut');
+  if (btnZoomOut) {
+    btnZoomOut.addEventListener('click', async () => {
+      await decreaseZoom(CONFIG.camera.zoomStep);
+      updateZoomIndicator();
+    });
+    log('Control Zoom - inicializado');
+  }
+  const btnZoomReset = document.getElementById('btnZoomReset');
+  if (btnZoomReset) {
+    btnZoomReset.addEventListener('click', async () => {
+      await resetZoom();
+      updateZoomIndicator();
+    });
+    log('Control Reset Zoom inicializado');
+  }
+}
+
+function updateZoomIndicator() {
+  const indicator = document.getElementById('zoomIndicator');
+  if (!indicator) return;
+  const z = getCurrentZoom();
+  try {
+    indicator.textContent = `Zoom: ${z.toFixed(1)}x`;
+  } catch {
+    indicator.textContent = `Zoom: ${z}x`;
   }
 }
 
@@ -65,6 +104,7 @@ async function init() {
     // Paso 1: Inicializar controles
     log('1/5 Inicializando controles...');
     initControls();
+    initZoomControls();
     
     // Paso 2: Registrar Service Worker
     log('2/5 Registrando Service Worker...');
@@ -73,6 +113,7 @@ async function init() {
     // Paso 3: Iniciar cámara
     log('3/5 Iniciando cámara...');
     await startCamera(video, canvas);
+    updateZoomIndicator();
     
     // Paso 4: Cargar modelo de IA
     log('4/5 Cargando modelo de IA...');
