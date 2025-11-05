@@ -1,4 +1,4 @@
-﻿const CACHE_NAME = 'ar-planta-v2';
+﻿const CACHE_NAME = 'ar-planta-v3';
 const urlsToCache = [
   './',
   './index.html',
@@ -68,4 +68,5 @@ self.addEventListener('fetch', event => {
       })
   );
 });
+
 

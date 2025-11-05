@@ -327,8 +327,6 @@ async function getSignerContract() {
         const s = document.createElement('script');
         s.src = sources[index] + '?nocache=' + Date.now();
         s.async = true;
-        s.crossOrigin = 'anonymous';
-        s.referrerPolicy = 'no-referrer';
         s.onload = () => resolve();
         s.onerror = () => { index++; tryLoad(); };
         document.head.appendChild(s);
