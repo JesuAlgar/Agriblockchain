@@ -60,7 +60,7 @@ export async function loadModel() {
     const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
 
     // Forzar backend WASM en móviles para evitar cuelgues por WebGL
-    if (typeof tf !== 'undefined' && isMobile) {
+    if (typeof tf !== 'undefined' && isMobile && CONFIG.model.forceWasmOnMobile) {
       try {
         await tf.setBackend('wasm');
         await tf.ready();

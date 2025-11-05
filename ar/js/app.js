@@ -268,23 +268,20 @@ async function openSaveModal() {
       showAlert('Datos guardados en blockchain', 'success');
       close();
     } catch (err) {
-      // Aviso claro y guÃ­a cuando MetaMask/SDK no estÃ¡ disponible
+      // Aviso claro y guía cuando MetaMask/SDK no está disponible
       const msg = (err && err.message) ? err.message : String(err);
-      if (msg.includes('MetaMask') || msg.includes('SDK')) {
-        showAlert('MetaMask no estÃ¡ disponible o el SDK no pudo cargarse. En mÃ³vil, instala MetaMask y vuelve; o abre esta dApp dentro de MetaMask.', 'warning');
-        // Intentar abrir vÃ­a deep link en mÃ³vil
-        const isMobile = /Android|webOS|iPhone|iPad|iPod/i.test(navigator.userAgent);
-        if (isMobile) {
-          const raw = location.href;
-          const clean = raw.replace(/^https?:\/\//, '');
-          const deepLink = `https://metamask.app.link/dapp/${clean}`;
-          setTimeout(() => { try { window.location.href = deepLink; } catch {} }, 800);
-        }
+      if (msg.includes("MetaMask") || msg.includes("SDK")) {
+        showAlert("MetaMask no está disponible o el SDK no pudo cargarse. Abre la app de MetaMask para firmar y vuelve, o instala la extensión en escritorio.", "warning");
+      } else {
+        showAlert(`Error al guardar: ${msg}`, "danger");
+      }
+    }
       } else {
         showAlert(`Error al guardar: ${msg}`, 'danger');
       }
     }
   };
 }
+
 
 
