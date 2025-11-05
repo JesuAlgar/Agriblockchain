@@ -1,5 +1,5 @@
-// ============================================
-// GESTOR DE DATOS Y CACHÉ
+﻿// ============================================
+// GESTOR DE DATOS Y CACHÃ‰
 // ============================================
 
 import { CONFIG, getPlantIdFromURL, STATE } from './config.js';
@@ -25,11 +25,11 @@ const FALLBACK_DATA = {
   germinationRate_pct: 0
 };
 
-// Caché de datos de plantas
+// CachÃ© de datos de plantas
 const plantDataCache = new Map();
 
 /**
- * ⭐ NUEVA: Inicializar conexión a blockchain
+ * â­ NUEVA: Inicializar conexiÃ³n a blockchain
  */
 async function initBlockchain() {
   if (STATE.blockchainConnected) {
@@ -37,11 +37,11 @@ async function initBlockchain() {
   }
 
   try {
-    log('Inicializando conexión a blockchain...');
+    log('Inicializando conexiÃ³n a blockchain...');
 
-    // Verificar que ethers esté disponible
+    // Verificar que ethers estÃ© disponible
     if (typeof window.ethers === 'undefined') {
-      throw new Error('Ethers.js no está cargado');
+      throw new Error('Ethers.js no estÃ¡ cargado');
     }
 
     // Crear provider (solo lectura, no necesita MetaMask)
@@ -61,7 +61,7 @@ async function initBlockchain() {
     STATE.blockchainContract = contract;
     STATE.blockchainConnected = true;
 
-    log('✅ Blockchain conectado a Sepolia');
+    log('âœ… Blockchain conectado a Sepolia');
     return true;
 
   } catch (err) {
@@ -72,23 +72,23 @@ async function initBlockchain() {
 }
 
 /**
- * ⭐ NUEVA: Cargar datos desde blockchain
+ * â­ NUEVA: Cargar datos desde blockchain
  */
 async function loadFromBlockchain(plantId) {
   try {
-    // Asegurar que blockchain está conectado
+    // Asegurar que blockchain estÃ¡ conectado
     const connected = await initBlockchain();
     if (!connected) {
       throw new Error('No se pudo conectar a blockchain');
     }
 
-    log(`📖 Leyendo datos de blockchain para: ${plantId}`);
+    log(`ðŸ“– Leyendo datos de blockchain para: ${plantId}`);
 
     // Verificar si la planta existe
     const exists = await STATE.blockchainContract.plantExists(plantId);
     
     if (!exists) {
-      log(`⚠️ Planta ${plantId} no encontrada en blockchain`, 'warn');
+      log(`âš ï¸ Planta ${plantId} no encontrada en blockchain`, 'warn');
       throw new Error('Planta no encontrada en blockchain');
     }
 
@@ -98,7 +98,7 @@ async function loadFromBlockchain(plantId) {
     // Parsear JSON
     const data = JSON.parse(jsonData);
     
-    log(`✅ Datos de blockchain leídos: ${data.seedVariety}`);
+    log(`âœ… Datos de blockchain leÃ­dos: ${data.seedVariety}`);
     
     return data;
 
@@ -109,13 +109,13 @@ async function loadFromBlockchain(plantId) {
 }
 
 /**
- * ⭐ MODIFICADA: Cargar datos desde JSON local
+ * â­ MODIFICADA: Cargar datos desde JSON local
  */
 async function loadFromLocalJSON(plantId) {
   const url = `./data/${encodeURIComponent(plantId)}.json`;
   
   try {
-    log(`📖 Cargando datos locales desde ${url}`);
+    log(`ðŸ“– Cargando datos locales desde ${url}`);
     const response = await fetch(url, { cache: 'no-store' });
     
     if (!response.ok) {
@@ -123,7 +123,7 @@ async function loadFromLocalJSON(plantId) {
     }
     
     const data = await response.json();
-    log(`✅ Datos locales cargados: ${data.seedVariety}`);
+    log(`âœ… Datos locales cargados: ${data.seedVariety}`);
     return data;
     
   } catch (err) {
@@ -133,8 +133,8 @@ async function loadFromLocalJSON(plantId) {
 }
 
 /**
- * ⭐ MODIFICADA: Carga los datos de una planta (con caché)
- * Ahora soporta BLOCKCHAIN o LOCAL_JSON según configuración
+ * â­ MODIFICADA: Carga los datos de una planta (con cachÃ©)
+ * Ahora soporta BLOCKCHAIN o LOCAL_JSON segÃºn configuraciÃ³n
  */
 export async function loadPlantData(plantIndex) {
   // Forzar solo plantIndex = 0
@@ -148,7 +148,7 @@ export async function loadPlantData(plantIndex) {
 
   // Si hay cache y es reciente (menos de 5 segundos), usar cache
   if (cached && (now - cached.lastUpdate) < CONFIG.dataUpdateInterval) {
-    log(`Usando datos en caché para planta ${plantIndex}`);
+    log(`Usando datos en cachÃ© para planta ${plantIndex}`);
     return cached.data;
   }
 
@@ -158,12 +158,12 @@ export async function loadPlantData(plantIndex) {
   try {
     let data;
 
-    // ⭐ SELECCIONAR FUENTE DE DATOS
+    // â­ SELECCIONAR FUENTE DE DATOS
     if (CONFIG.blockchain.mode === 'BLOCKCHAIN') {
-      log(`🔗 Modo BLOCKCHAIN activado para ${plantId}`);
+      log(`ðŸ”— Modo BLOCKCHAIN activado para ${plantId}`);
       data = await loadFromBlockchain(plantId);
     } else {
-      log(`📁 Modo LOCAL_JSON activado para ${plantId}`);
+      log(`ðŸ“ Modo LOCAL_JSON activado para ${plantId}`);
       data = await loadFromLocalJSON(plantId);
     }
     
@@ -174,15 +174,15 @@ export async function loadPlantData(plantIndex) {
       previousData: cached ? cached.data : null
     });
     
-    log(`✅ Datos cargados para planta ${plantIndex}: ${data.seedVariety}`);
+    log(`âœ… Datos cargados para planta ${plantIndex}: ${data.seedVariety}`);
     return data;
     
   } catch (err) {
-    log(`❌ Error cargando datos: ${err.message}`, 'error');
+    log(`âŒ Error cargando datos: ${err.message}`, 'error');
     
     // Intentar usar cache antiguo si existe
     if (cached) {
-      log(`⚠️ Usando cache antiguo como fallback`);
+      log(`âš ï¸ Usando cache antiguo como fallback`);
       return cached.data;
     }
     
@@ -210,23 +210,23 @@ export function getCachedPlantData(plantIndex) {
 }
 
 /**
- * Limpia el caché de una planta específica
+ * Limpia el cachÃ© de una planta especÃ­fica
  */
 export function clearPlantCache(plantIndex) {
   plantDataCache.delete(plantIndex);
-  log(`Caché limpiado para planta ${plantIndex}`);
+  log(`CachÃ© limpiado para planta ${plantIndex}`);
 }
 
 /**
- * Limpia todo el caché
+ * Limpia todo el cachÃ©
  */
 export function clearAllCache() {
   plantDataCache.clear();
-  log('Caché completo limpiado');
+  log('CachÃ© completo limpiado');
 }
 
 /**
- * Pre-carga los datos de las plantas más comunes
+ * Pre-carga los datos de las plantas mÃ¡s comunes
  */
 export async function preloadPlantData(count = 3) {
   log(`Pre-cargando datos de ${count} plantas...`);
@@ -240,7 +240,7 @@ export async function preloadPlantData(count = 3) {
   
   try {
     await Promise.all(promises);
-    log(`✅ Pre-carga completa`);
+    log(`âœ… Pre-carga completa`);
   } catch (err) {
     log(`Error en pre-carga: ${err.message}`, 'warn');
   }
@@ -254,7 +254,7 @@ async function getSignerContract() {
     throw new Error('Entorno sin ventana');
   }
   if (!window.ethereum) {
-    throw new Error('MetaMask no está disponible');
+    throw new Error('MetaMask no estÃ¡ disponible');
   }
 
   // Solicitar cuentas
@@ -271,7 +271,7 @@ async function getSignerContract() {
         params: [{ chainId: CONFIG.blockchain.network.chainIdHex }]
       });
     } catch (switchErr) {
-      // Si la red no está agregada (código 4902), intentar agregarla
+      // Si la red no estÃ¡ agregada (cÃ³digo 4902), intentar agregarla
       if (switchErr && (switchErr.code === 4902 || switchErr.message?.includes('Unrecognized chain'))) {
         try {
           await window.ethereum.request({
@@ -285,10 +285,10 @@ async function getSignerContract() {
             }]
           });
         } catch (addErr) {
-          throw new Error('Agrega la red Sepolia en MetaMask e inténtalo de nuevo');
+          throw new Error('Agrega la red Sepolia en MetaMask e intÃ©ntalo de nuevo');
         }
       } else {
-        throw new Error('Conecta MetaMask a Sepolia e inténtalo de nuevo');
+        throw new Error('Conecta MetaMask a Sepolia e intÃ©ntalo de nuevo');
       }
     }
   }
@@ -303,19 +303,32 @@ async function getSignerContract() {
 }
 
 /**
- * NUEVA: Versión con fallback a MetaMask SDK
+ * NUEVA: VersiÃ³n con fallback a MetaMask SDK
  */
   // Carga diferida del MetaMask SDK
   async function __loadMetaMaskSDK() {
-    if (window.MetaMaskSDK) return window.MetaMaskSDK;
-    await new Promise((resolve, reject) => {
+  if (window.MetaMaskSDK) return window.MetaMaskSDK;
+  if (window.__mmsdkLoading) {
+    await window.__mmsdkLoading;
+    return window.MetaMaskSDK;
+  }
+  window.__mmsdkLoading = new Promise((resolve, reject) => {
+    try {
       const s = document.createElement('script');
-      s.src = 'https://unpkg.com/@metamask/sdk/dist/browser/umd/metamask-sdk.js';
+      s.src = 'https://unpkg.com/@metamask/sdk@1.1.3/dist/browser/umd/metamask-sdk.js';
       s.async = true;
+      s.crossOrigin = 'anonymous';
+      s.referrerPolicy = 'no-referrer';
       s.onload = () => resolve();
       s.onerror = () => reject(new Error('No se pudo cargar MetaMask SDK'));
       document.head.appendChild(s);
-    });
+    } catch (e) {
+      reject(e);
+    }
+  });
+  await window.__mmsdkLoading;
+  return window.MetaMaskSDK;
+});
     return window.MetaMaskSDK;
   }async function getSignerContractSDK() {
   if (typeof window === 'undefined') {
@@ -325,12 +338,17 @@ async function getSignerContract() {
   if (window.ethereum) {
     ethProvider = window.ethereum;
 
-  } else {
+    } else {
     try {
       const SDKMod = await __loadMetaMaskSDK();
       const SDKCtor = SDKMod.MetaMaskSDK || SDKMod.default || SDKMod;
       const MMSDK = new SDKCtor({
-        dappMetadata: { name: 'AgriBlockchain', url: location.href.split('#')[0] },
+        dappMetadata: { name: 'AgriBlockchain', url: location.origin },
+        communicationLayerPreference: 'webrtc',
+        useDeeplink: true,
+        shouldShimWeb3: false,
+        enableAnalytics: false,
+        forceDeleteProvider: true,
         injectProvider: true
       });
       ethProvider = MMSDK.getProvider();
@@ -339,7 +357,7 @@ async function getSignerContract() {
     }
   }
   if (!ethProvider) {
-    throw new Error('MetaMask no está disponible');
+    throw new Error('MetaMask no estÃ¡ disponible');
   }
   await ethProvider.request({ method: 'eth_requestAccounts' });
   const web3Provider = new ethers.providers.Web3Provider(ethProvider, 'any');
@@ -364,10 +382,10 @@ async function getSignerContract() {
             }]
           });
         } catch (addErr) {
-          throw new Error('Agrega la red Sepolia en MetaMask e inténtalo de nuevo');
+          throw new Error('Agrega la red Sepolia en MetaMask e intÃ©ntalo de nuevo');
         }
       } else {
-        throw new Error('Conecta MetaMask a Sepolia e inténtalo de nuevo');
+        throw new Error('Conecta MetaMask a Sepolia e intÃ©ntalo de nuevo');
       }
     }
   }
@@ -388,14 +406,14 @@ export async function savePlantData(plantId, data) {
     const contract = await getSignerContractSDK();
     const json = JSON.stringify(data);
 
-    log(`⬆️ Enviando setPlantData(${plantId})...`);
+    log(`â¬†ï¸ Enviando setPlantData(${plantId})...`);
     const tx = await contract.setPlantData(plantId, json);
-    log(`📨 Tx enviada: ${tx.hash}`);
+    log(`ðŸ“¨ Tx enviada: ${tx.hash}`);
 
     const receipt = await tx.wait();
-    log(`✅ Tx confirmada en bloque ${receipt.blockNumber}`);
+    log(`âœ… Tx confirmada en bloque ${receipt.blockNumber}`);
 
-    // Limpiar caché para forzar recarga fresca
+    // Limpiar cachÃ© para forzar recarga fresca
     try { clearPlantCache(0); } catch {}
     return receipt;
 
@@ -404,6 +422,7 @@ export async function savePlantData(plantId, data) {
     throw err;
   }
 }
+
 
 
 
