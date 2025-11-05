@@ -1,4 +1,4 @@
-const CACHE_NAME = 'ar-planta-v2';
+﻿const CACHE_NAME = 'ar-planta-v2';
 const urlsToCache = [
   './',
   './index.html',
@@ -27,7 +27,7 @@ self.addEventListener('install', event => {
         console.warn('Service Worker: Error cacheando:', err);
       })
   );
-  // Forzar activación inmediata
+  // Forzar activaciÃ³n inmediata
   self.skipWaiting();
 });
 
@@ -54,13 +54,13 @@ self.addEventListener('fetch', event => {
   event.respondWith(
     caches.match(event.request)
       .then(response => {
-        // Si está en cache, devolverlo
+        // Si estÃ¡ en cache, devolverlo
         if (response) {
           return response;
         }
         // Si no, hacer fetch
         return fetch(event.request).catch(() => {
-          // Si falla el fetch, devolver página offline si es HTML
+          // Si falla el fetch, devolver pÃ¡gina offline si es HTML
           if (event.request.headers.get('accept').includes('text/html')) {
             return caches.match('./index.html');
           }
@@ -68,3 +68,4 @@ self.addEventListener('fetch', event => {
       })
   );
 });
+

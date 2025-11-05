@@ -313,18 +313,31 @@ async function getSignerContract() {
     return window.MetaMaskSDK;
   }
   window.__mmsdkLoading = new Promise((resolve, reject) => {
-    try {
-      const s = document.createElement('script');
-      s.src = 'https://unpkg.com/@metamask/sdk@1.1.3/dist/browser/umd/metamask-sdk.js';
-      s.async = true;
-      s.crossOrigin = 'anonymous';
-      s.referrerPolicy = 'no-referrer';
-      s.onload = () => resolve();
-      s.onerror = () => reject(new Error('No se pudo cargar MetaMask SDK'));
-      document.head.appendChild(s);
-    } catch (e) {
-      reject(e);
-    }
+    const sources = [
+      'https://cdn.jsdelivr.net/npm/@metamask/sdk@1.1.3/dist/browser/umd/metamask-sdk.js',
+      'https://unpkg.com/@metamask/sdk@1.1.3/dist/browser/umd/metamask-sdk.js'
+    ];
+    let index = 0;
+    const tryLoad = () => {
+      if (index >= sources.length) {
+        reject(new Error('No se pudo cargar MetaMask SDK (CDNs)'));
+        return;
+      }
+      try {
+        const s = document.createElement('script');
+        s.src = sources[index] + '?nocache=' + Date.now();
+        s.async = true;
+        s.crossOrigin = 'anonymous';
+        s.referrerPolicy = 'no-referrer';
+        s.onload = () => resolve();
+        s.onerror = () => { index++; tryLoad(); };
+        document.head.appendChild(s);
+      } catch (e) {
+        index++;
+        tryLoad();
+      }
+    };
+    tryLoad();
   });
   await window.__mmsdkLoading;
   return window.MetaMaskSDK;
