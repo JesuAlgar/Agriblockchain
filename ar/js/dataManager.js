@@ -305,16 +305,30 @@ async function getSignerContract() {
 /**
  * NUEVA: Versión con fallback a MetaMask SDK
  */
-async function getSignerContractSDK() {
+  // Carga diferida del MetaMask SDK
+  async function __loadMetaMaskSDK() {
+    if (window.MetaMaskSDK) return window.MetaMaskSDK;
+    await new Promise((resolve, reject) => {
+      const s = document.createElement('script');
+      s.src = 'https://unpkg.com/@metamask/sdk/dist/browser/umd/metamask-sdk.js';
+      s.async = true;
+      s.onload = () => resolve();
+      s.onerror = () => reject(new Error('No se pudo cargar MetaMask SDK'));
+      document.head.appendChild(s);
+    });
+    return window.MetaMaskSDK;
+  }async function getSignerContractSDK() {
   if (typeof window === 'undefined') {
     throw new Error('Entorno sin ventana');
   }
   let ethProvider = null;
   if (window.ethereum) {
     ethProvider = window.ethereum;
-  } else if (window.MetaMaskSDK) {
+
+  } else {
     try {
-      const SDKCtor = window.MetaMaskSDK.MetaMaskSDK || window.MetaMaskSDK.default || window.MetaMaskSDK;
+      const SDKMod = await __loadMetaMaskSDK();
+      const SDKCtor = SDKMod.MetaMaskSDK || SDKMod.default || SDKMod;
       const MMSDK = new SDKCtor({
         dappMetadata: { name: 'AgriBlockchain', url: location.href.split('#')[0] },
         injectProvider: true
@@ -390,4 +404,6 @@ export async function savePlantData(plantId, data) {
     throw err;
   }
 }
+
+
 

@@ -81,28 +81,6 @@ function initSaveControl2() {
   });
 }
 
-// Guardar en blockchain (botón de la cabecera)
-function initSaveControl() {\n  const btnSave = document.getElementById('btnSaveChain');\n  if (!btnSave) return;\n  btnSave.addEventListener('click', async () => {\n    try {\n      await openSaveModal();\n    } catch (err) {\n      showAlert(Error: );\n    }\n  });\n}\n  btnSave.addEventListener('click', async () => {
-    try {
-      if (typeof window.ethereum === 'undefined') {
-        const isMobile = /Android|webOS|iPhone|iPad|iPod/i.test(navigator.userAgent);
-        if (isMobile) {
-          const raw = location.href;
-          const clean = raw.replace(/^https?:\/\//, '');
-          const deepLink = `https://metamask.app.link/dapp/${clean}`;
-          showAlert('Abriendo en MetaMask…', 'warning');
-          window.location.href = deepLink;
-        } else {
-          showAlert('MetaMask no está disponible. Instala la extensión en tu navegador o usa el navegador de MetaMask en móvil.', 'warning');
-        }
-        return;
-      }
-      await openSaveModal();
-    } catch (err) {
-      showAlert(`Error: ${err.message}`);
-    }
-  });
-}
 
 /**
  * Registra el Service Worker para PWA
@@ -290,8 +268,23 @@ async function openSaveModal() {
       showAlert('Datos guardados en blockchain', 'success');
       close();
     } catch (err) {
-      showAlert(`Error al guardar: ${err.message}`, 'danger');
+      // Aviso claro y guía cuando MetaMask/SDK no está disponible
+      const msg = (err && err.message) ? err.message : String(err);
+      if (msg.includes('MetaMask') || msg.includes('SDK')) {
+        showAlert('MetaMask no está disponible o el SDK no pudo cargarse. En móvil, instala MetaMask y vuelve; o abre esta dApp dentro de MetaMask.', 'warning');
+        // Intentar abrir vía deep link en móvil
+        const isMobile = /Android|webOS|iPhone|iPad|iPod/i.test(navigator.userAgent);
+        if (isMobile) {
+          const raw = location.href;
+          const clean = raw.replace(/^https?:\/\//, '');
+          const deepLink = `https://metamask.app.link/dapp/${clean}`;
+          setTimeout(() => { try { window.location.href = deepLink; } catch {} }, 800);
+        }
+      } else {
+        showAlert(`Error al guardar: ${msg}`, 'danger');
+      }
     }
   };
 }
+
 
