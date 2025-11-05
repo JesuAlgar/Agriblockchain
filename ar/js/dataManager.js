@@ -328,9 +328,8 @@ async function getSignerContract() {
   });
   await window.__mmsdkLoading;
   return window.MetaMaskSDK;
-});
-    return window.MetaMaskSDK;
-  }async function getSignerContractSDK() {
+}
+async function getSignerContractSDK() {
   if (typeof window === 'undefined') {
     throw new Error('Entorno sin ventana');
   }
