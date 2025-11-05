@@ -1,5 +1,5 @@
-// ============================================
-// APLICACIÓN PRINCIPAL
+﻿// ============================================
+// APLICACIÃ“N PRINCIPAL
 // ============================================
 
 import { CONFIG, STATE } from './config.js';
@@ -14,18 +14,18 @@ import { getPlantIdFromURL } from './config.js';
  * Inicializa los event listeners de los controles
  */
 function initControls() {
-  // Botón cambiar tema
+  // BotÃ³n cambiar tema
   const btnTheme = document.getElementById('btnTheme');
   if (btnTheme) {
     btnTheme.addEventListener('click', toggleTheme);
-    log('✓ Control de tema inicializado');
+    log('âœ“ Control de tema inicializado');
   }
 
-  // Botón pantalla completa
+  // BotÃ³n pantalla completa
   const btnFullscreen = document.getElementById('btnFullscreen');
   if (btnFullscreen) {
     btnFullscreen.addEventListener('click', toggleFullscreen);
-    log('✓ Control de pantalla completa inicializado');
+    log('âœ“ Control de pantalla completa inicializado');
   }
 }
 
@@ -68,7 +68,7 @@ function updateZoomIndicator() {
   }
 }
 
-// Nuevo: versión simple del control de guardado
+// Nuevo: versiÃ³n simple del control de guardado
 function initSaveControl2() {
   const btnSave = document.getElementById('btnSaveChain');
   if (!btnSave) return;
@@ -88,13 +88,13 @@ function initSaveControl2() {
 function registerServiceWorker() {
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('./sw.js')
-      .then(() => log('✓ Service Worker registrado'))
+      .then(() => log('âœ“ Service Worker registrado'))
       .catch(err => log(`Service Worker no disponible: ${err.message}`, 'warn'));
   }
 }
 
 /**
- * Inicialización principal de la aplicación
+ * InicializaciÃ³n principal de la aplicaciÃ³n
  */
 async function init() {
   try {
@@ -112,9 +112,9 @@ async function init() {
     // Guardar referencias en el estado global
     STATE.container = container;
     
-    // ⭐ LIMPIAR paneles antiguos que puedan existir
+    // â­ LIMPIAR paneles antiguos que puedan existir
     document.querySelectorAll('.data-panel').forEach(panel => panel.remove());
-    log('✓ Paneles antiguos limpiados');
+    log('âœ“ Paneles antiguos limpiados');
     
     // Paso 1: Inicializar controles
     log('1/5 Inicializando controles...');
@@ -126,8 +126,8 @@ async function init() {
     log('2/5 Registrando Service Worker...');
     registerServiceWorker();
     
-    // Paso 3: Iniciar cámara
-    log('3/5 Iniciando cámara...');
+    // Paso 3: Iniciar cÃ¡mara
+    log('3/5 Iniciando cÃ¡mara...');
     await startCamera(video, canvas);
     updateZoomIndicator();
     
@@ -139,22 +139,22 @@ async function init() {
     log('5/5 Pre-cargando datos...');
     await preloadPlantData(2); // Pre-cargar 2 plantas
     
-    // Iniciar loop de detección
-    log('✓ Inicialización completa. Iniciando detección...');
+    // Iniciar loop de detecciÃ³n
+    log('âœ“ InicializaciÃ³n completa. Iniciando detecciÃ³n...');
     detect();
     
   } catch (err) {
-    log(`Error crítico en inicialización: ${err.message}`, 'error');
+    log(`Error crÃ­tico en inicializaciÃ³n: ${err.message}`, 'error');
     
     // Mostrar error en UI
     const statusElement = document.getElementById('status');
     if (statusElement) {
-      statusElement.textContent = `⚠️ Error: ${err.message}`;
+      statusElement.textContent = `âš ï¸ Error: ${err.message}`;
     }
   }
 }
 
-// Iniciar aplicación cuando el DOM esté listo
+// Iniciar aplicaciÃ³n cuando el DOM estÃ© listo
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', init);
 } else {
@@ -194,7 +194,7 @@ async function openSaveModal() {
   const cancelBtn = document.getElementById('btnCancelSave');
   if (!modal || !form || !cancelBtn) return;
 
-  // Obtener datos actuales (de caché o cargándolos)
+  // Obtener datos actuales (de cachÃ© o cargÃ¡ndolos)
   let data = getCachedPlantData(0)?.data;
   if (!data) {
     try { data = await loadPlantData(0); } catch {}
@@ -268,16 +268,12 @@ async function openSaveModal() {
       showAlert('Datos guardados en blockchain', 'success');
       close();
     } catch (err) {
-      // Aviso claro y gu�a cuando MetaMask/SDK no est� disponible
+      // Aviso claro y guía cuando MetaMask/SDK no está disponible
       const msg = (err && err.message) ? err.message : String(err);
       if (msg.includes("MetaMask") || msg.includes("SDK")) {
-        showAlert("MetaMask no est� disponible o el SDK no pudo cargarse. Abre la app de MetaMask para firmar y vuelve, o instala la extensi�n en escritorio.", "warning");
+        showAlert("MetaMask no está disponible o el SDK no pudo cargarse. Abre la app de MetaMask para firmar y vuelve, o instala la extensión en escritorio.", "warning");
       } else {
         showAlert(`Error al guardar: ${msg}`, "danger");
-      }
-    }
-      } else {
-        showAlert(`Error al guardar: ${msg}`, 'danger');
       }
     }
   };
