@@ -72,6 +72,14 @@ function updateZoomIndicator() {
 function initSaveControl() {
   const btnSave = document.getElementById('btnSaveChain');
   if (!btnSave) return;
+  // Avisar si falta MetaMask
+  if (typeof window.ethereum === 'undefined') {
+    btnSave.title = 'MetaMask no está disponible';
+    btnSave.addEventListener('click', () => {
+      showAlert('MetaMask no está disponible. Abre la app en el navegador de MetaMask (móvil) o instala la extensión en el navegador de escritorio.', 'warning');
+    });
+    return;
+  }
   btnSave.addEventListener('click', async () => {
     try {
       const plantId = getPlantIdFromURL();

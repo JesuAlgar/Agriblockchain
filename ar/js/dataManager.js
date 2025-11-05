@@ -271,7 +271,25 @@ async function getSignerContract() {
         params: [{ chainId: CONFIG.blockchain.network.chainIdHex }]
       });
     } catch (switchErr) {
-      throw new Error('Conecta MetaMask a Sepolia e inténtalo de nuevo');
+      // Si la red no está agregada (código 4902), intentar agregarla
+      if (switchErr && (switchErr.code === 4902 || switchErr.message?.includes('Unrecognized chain'))) {
+        try {
+          await window.ethereum.request({
+            method: 'wallet_addEthereumChain',
+            params: [{
+              chainId: CONFIG.blockchain.network.chainIdHex,
+              chainName: CONFIG.blockchain.network.name,
+              nativeCurrency: { name: 'Sepolia ETH', symbol: 'SEP', decimals: 18 },
+              rpcUrls: [CONFIG.blockchain.network.rpcUrl],
+              blockExplorerUrls: ['https://sepolia.etherscan.io']
+            }]
+          });
+        } catch (addErr) {
+          throw new Error('Agrega la red Sepolia en MetaMask e inténtalo de nuevo');
+        }
+      } else {
+        throw new Error('Conecta MetaMask a Sepolia e inténtalo de nuevo');
+      }
     }
   }
 
