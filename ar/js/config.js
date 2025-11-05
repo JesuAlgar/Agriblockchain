@@ -72,12 +72,22 @@ export const CONFIG = {
       name: 'Sepolia',
       chainId: 11155111,
       chainIdHex: '0xaa36a7',
-      rpcUrl: 'https://eth-sepolia.g.alchemy.com/v2/8jUDyP_I-VJU40ZtPzxDM'
+      rpcUrl: 'https://ethereum-sepolia-rpc.publicnode.com'
     },
     
     contractAddress: '0x2299b2eEc07A9c406C2688EeB6c7c74f92e3dA42',
     
     contractABI: [
+      {
+        "inputs": [
+          {"internalType": "string", "name": "_plantId", "type": "string"},
+          {"internalType": "string", "name": "_json", "type": "string"}
+        ],
+        "name": "setPlantData",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+      },
       {
         "inputs": [{"internalType": "string", "name": "_plantId", "type": "string"}],
         "name": "getPlantData",

@@ -4,10 +4,11 @@
 
 import { CONFIG, STATE } from './config.js';
 import { log } from './utils.js';
-import { preloadPlantData } from './dataManager.js';
+import { preloadPlantData, savePlantData, getCachedPlantData, loadPlantData } from './dataManager.js';
 import { startCamera, increaseZoom, decreaseZoom, resetZoom, getCurrentZoom } from './camera.js';
 import { loadModel, detect } from './detector.js';
-import { toggleTheme, toggleFullscreen } from './ui.js';
+import { toggleTheme, toggleFullscreen, showAlert } from './ui.js';
+import { getPlantIdFromURL } from './config.js';
 
 /**
  * Inicializa los event listeners de los controles
@@ -67,6 +68,31 @@ function updateZoomIndicator() {
   }
 }
 
+// Guardar en blockchain (botón de la cabecera)
+function initSaveControl() {
+  const btnSave = document.getElementById('btnSaveChain');
+  if (!btnSave) return;
+  btnSave.addEventListener('click', async () => {
+    try {
+      const plantId = getPlantIdFromURL();
+      let cached = getCachedPlantData(0);
+      let data = cached?.data;
+      if (!data) {
+        data = await loadPlantData(0);
+      }
+      if (!data) {
+        showAlert('No hay datos para guardar', 'warning');
+        return;
+      }
+      showAlert('Enviando a blockchain...', 'warning');
+      await savePlantData(plantId, data);
+      showAlert('Datos guardados en blockchain', 'success');
+    } catch (err) {
+      showAlert(`Error al guardar: ${err.message}`);
+    }
+  });
+}
+
 /**
  * Registra el Service Worker para PWA
  */
@@ -105,6 +131,7 @@ async function init() {
     log('1/5 Inicializando controles...');
     initControls();
     initZoomControls();
+    initSaveControl();
     
     // Paso 2: Registrar Service Worker
     log('2/5 Registrando Service Worker...');

@@ -245,3 +245,66 @@ export async function preloadPlantData(count = 3) {
     log(`Error en pre-carga: ${err.message}`, 'warn');
   }
 }
+
+/**
+ * NUEVA: Inicializa contrato con signer (MetaMask) para ESCRITURA
+ */
+async function getSignerContract() {
+  if (typeof window === 'undefined') {
+    throw new Error('Entorno sin ventana');
+  }
+  if (!window.ethereum) {
+    throw new Error('MetaMask no está disponible');
+  }
+
+  // Solicitar cuentas
+  await window.ethereum.request({ method: 'eth_requestAccounts' });
+
+  const web3Provider = new ethers.providers.Web3Provider(window.ethereum);
+  const network = await web3Provider.getNetwork();
+
+  // Cambiar de red si es necesario
+  if (network.chainId !== CONFIG.blockchain.network.chainId) {
+    try {
+      await window.ethereum.request({
+        method: 'wallet_switchEthereumChain',
+        params: [{ chainId: CONFIG.blockchain.network.chainIdHex }]
+      });
+    } catch (switchErr) {
+      throw new Error('Conecta MetaMask a Sepolia e inténtalo de nuevo');
+    }
+  }
+
+  const signer = web3Provider.getSigner();
+  const contract = new ethers.Contract(
+    CONFIG.blockchain.contractAddress,
+    CONFIG.blockchain.contractABI,
+    signer
+  );
+  return contract;
+}
+
+/**
+ * NUEVA: Guarda datos de una planta en blockchain (setPlantData)
+ */
+export async function savePlantData(plantId, data) {
+  try {
+    const contract = await getSignerContract();
+    const json = JSON.stringify(data);
+
+    log(`⬆️ Enviando setPlantData(${plantId})...`);
+    const tx = await contract.setPlantData(plantId, json);
+    log(`📨 Tx enviada: ${tx.hash}`);
+
+    const receipt = await tx.wait();
+    log(`✅ Tx confirmada en bloque ${receipt.blockNumber}`);
+
+    // Limpiar caché para forzar recarga fresca
+    try { clearPlantCache(0); } catch {}
+    return receipt;
+
+  } catch (err) {
+    log(`Error guardando en blockchain: ${err.message}`, 'error');
+    throw err;
+  }
+}
