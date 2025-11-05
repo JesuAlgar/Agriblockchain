@@ -82,21 +82,13 @@ function initSaveControl() {
   }
   btnSave.addEventListener('click', async () => {
     try {
-      const plantId = getPlantIdFromURL();
-      let cached = getCachedPlantData(0);
-      let data = cached?.data;
-      if (!data) {
-        data = await loadPlantData(0);
-      }
-      if (!data) {
-        showAlert('No hay datos para guardar', 'warning');
+      if (typeof window.ethereum === 'undefined') {
+        showAlert('MetaMask no está disponible. Abre la app en el navegador de MetaMask (móvil) o instala la extensión en el navegador de escritorio.', 'warning');
         return;
       }
-      showAlert('Enviando a blockchain...', 'warning');
-      await savePlantData(plantId, data);
-      showAlert('Datos guardados en blockchain', 'success');
+      await openSaveModal();
     } catch (err) {
-      showAlert(`Error al guardar: ${err.message}`);
+      showAlert(`Error: ${err.message}`);
     }
   });
 }
@@ -188,3 +180,106 @@ window.addEventListener('error', (event) => {
 window.addEventListener('unhandledrejection', (event) => {
   log(`Promise rechazada: ${event.reason}`, 'error');
 });
+
+// ==========================
+// Modal Guardar en blockchain
+// ==========================
+function genId(prefix = '') {
+  const bytes = crypto.getRandomValues(new Uint8Array(8));
+  const hex = Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('');
+  return prefix ? `${prefix}-${hex}` : hex;
+}
+
+function genLotCode(fieldId) {
+  const d = new Date();
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  const plot = (fieldId || 'PLOT').toString().replace(/\s+/g, '-');
+  return `FARM-${y}-${m}-${day}-${plot}`;
+}
+
+async function openSaveModal() {
+  const modal = document.getElementById('saveModal');
+  const form = document.getElementById('saveForm');
+  const cancelBtn = document.getElementById('btnCancelSave');
+  if (!modal || !form || !cancelBtn) return;
+
+  // Obtener datos actuales (de caché o cargándolos)
+  let data = getCachedPlantData(0)?.data;
+  if (!data) {
+    try { data = await loadPlantData(0); } catch {}
+  }
+  data = data || {};
+
+  // Autocompletar campos auto
+  const nowIso = new Date().toISOString();
+  const auto = {
+    eventId: genId('EVT'),
+    batchId: genId('BATCH'),
+    timestamp: nowIso,
+    lotCode: genLotCode(data.fieldId)
+  };
+
+  // Poner valores en el formulario
+  form.querySelector('#f_eventId').value = auto.eventId;
+  form.querySelector('#f_batchId').value = auto.batchId;
+  form.querySelector('#f_timestamp').value = auto.timestamp;
+  form.querySelector('#f_lotCode').value = auto.lotCode;
+
+  form.querySelector('#f_eventType').value = data.eventType || '';
+  form.querySelector('#f_recordedBy').value = data.recordedBy || '';
+  form.querySelector('#f_fieldId').value = data.fieldId || '';
+  form.querySelector('#f_seedLotId').value = data.seed_LotId || '';
+  form.querySelector('#f_seedVariety').value = data.seedVariety || '';
+  form.querySelector('#f_seedSupplier').value = data.seedSupplier || '';
+  form.querySelector('#f_seedTreatment').value = data.seedTreatment || '';
+  form.querySelector('#f_quantityKg').value = data.quantity_kg ?? '';
+  form.querySelector('#f_plantingMethod').value = data.plantingMethod || '';
+  form.querySelector('#f_rowSpacing').value = data.rowSpacing_cm ?? '';
+  form.querySelector('#f_plantingDepth').value = data.plantingDepth_cm ?? '';
+  form.querySelector('#f_germinationRate').value = data.germinationRate_pct ?? '';
+
+  // Mostrar modal
+  modal.classList.remove('hidden');
+
+  function close() {
+    modal.classList.add('hidden');
+    form.onsubmit = null;
+    cancelBtn.onclick = null;
+  }
+
+  cancelBtn.onclick = close;
+
+  form.onsubmit = async (e) => {
+    e.preventDefault();
+    try {
+      const payload = {
+        eventType: form.querySelector('#f_eventType').value || 'SEEDING',
+        eventId: form.querySelector('#f_eventId').value,
+        batchId: form.querySelector('#f_batchId').value,
+        lotCode: form.querySelector('#f_lotCode').value,
+        timestamp: form.querySelector('#f_timestamp').value,
+        recordedBy: form.querySelector('#f_recordedBy').value || 'device-unknown',
+        fieldId: form.querySelector('#f_fieldId').value || 'PLOT',
+        seed_LotId: form.querySelector('#f_seedLotId').value || '',
+        seedVariety: form.querySelector('#f_seedVariety').value || '',
+        seedSupplier: form.querySelector('#f_seedSupplier').value || '',
+        seedTreatment: form.querySelector('#f_seedTreatment').value || '',
+        quantity_kg: parseFloat(form.querySelector('#f_quantityKg').value || '0') || 0,
+        plantingMethod: form.querySelector('#f_plantingMethod').value || '',
+        rowSpacing_cm: parseInt(form.querySelector('#f_rowSpacing').value || '0') || 0,
+        plantingDepth_cm: parseFloat(form.querySelector('#f_plantingDepth').value || '0') || 0,
+        germinationRate_pct: parseInt(form.querySelector('#f_germinationRate').value || '0') || 0,
+      };
+
+      const plantId = getPlantIdFromURL();
+      showAlert('Enviando a blockchain...', 'warning');
+      await savePlantData(plantId, payload);
+      showAlert('Datos guardados en blockchain', 'success');
+      close();
+    } catch (err) {
+      showAlert(`Error al guardar: ${err.message}`, 'danger');
+    }
+  };
+}
