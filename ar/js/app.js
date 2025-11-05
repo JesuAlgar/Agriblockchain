@@ -83,7 +83,16 @@ function initSaveControl() {
   btnSave.addEventListener('click', async () => {
     try {
       if (typeof window.ethereum === 'undefined') {
-        showAlert('MetaMask no está disponible. Abre la app en el navegador de MetaMask (móvil) o instala la extensión en el navegador de escritorio.', 'warning');
+        const isMobile = /Android|webOS|iPhone|iPad|iPod/i.test(navigator.userAgent);
+        if (isMobile) {
+          const raw = location.href;
+          const clean = raw.replace(/^https?:\/\//, '');
+          const deepLink = `https://metamask.app.link/dapp/${clean}`;
+          showAlert('Abriendo en MetaMask…', 'warning');
+          window.location.href = deepLink;
+        } else {
+          showAlert('MetaMask no está disponible. Instala la extensión en tu navegador o usa el navegador de MetaMask en móvil.', 'warning');
+        }
         return;
       }
       await openSaveModal();
