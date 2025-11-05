@@ -30,6 +30,31 @@ export async function loadModel() {
     }
     
     log('Cargando modelo COCO-SSD...');
+
+    // Preparar backend de TensorFlow: WebGL preferido, fallback WASM
+    if (typeof tf !== 'undefined') {
+      try {
+        await tf.ready();
+        let backend = tf.getBackend && tf.getBackend();
+        // Si no hay backend o no es webgl, intenta webgl primero
+        const canWebGL = (tf.findBackend && tf.findBackend('webgl')) || (tf.engine && tf.engine().registryFactory && tf.engine().registryFactory['webgl']);
+        if (canWebGL && backend !== 'webgl') {
+          await tf.setBackend('webgl');
+          await tf.ready();
+          backend = tf.getBackend && tf.getBackend();
+        }
+        // Si no hay webgl, intenta wasm
+        const canWASM = (tf.findBackend && tf.findBackend('wasm')) || (tf.engine && tf.engine().registryFactory && tf.engine().registryFactory['wasm']);
+        if (backend !== 'webgl' && canWASM && backend !== 'wasm') {
+          await tf.setBackend('wasm');
+          await tf.ready();
+          backend = tf.getBackend && tf.getBackend();
+        }
+        log(`Backend TF activo: ${backend}`);
+      } catch (e) {
+        log(`No se pudo preparar backend TF: ${e.message}`, 'warn');
+      }
+    }
     
     // ✨ OPTIMIZACIÓN 1: Detectar si es móvil
     const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
@@ -50,7 +75,12 @@ export async function loadModel() {
       loadingElement.appendChild(progressText);
     }
     
-    STATE.model = await cocoSsd.load(modelConfig);
+    // Cargar modelo con timeout para evitar bloqueos en algunos móviles
+    const loadPromise = (typeof cocoSsd !== 'undefined' && cocoSsd.load)
+      ? cocoSsd.load(modelConfig)
+      : Promise.reject(new Error('coco-ssd no disponible'));
+    const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('timeout cargando modelo')), 25000));
+    STATE.model = await Promise.race([loadPromise, timeoutPromise]);
     
     if (loadingElement) {
       loadingElement.classList.add('hidden');
