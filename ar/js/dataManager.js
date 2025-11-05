@@ -303,11 +303,75 @@ async function getSignerContract() {
 }
 
 /**
+ * NUEVA: Versión con fallback a MetaMask SDK
+ */
+async function getSignerContractSDK() {
+  if (typeof window === 'undefined') {
+    throw new Error('Entorno sin ventana');
+  }
+  let ethProvider = null;
+  if (window.ethereum) {
+    ethProvider = window.ethereum;
+  } else if (window.MetaMaskSDK) {
+    try {
+      const SDKCtor = window.MetaMaskSDK.MetaMaskSDK || window.MetaMaskSDK.default || window.MetaMaskSDK;
+      const MMSDK = new SDKCtor({
+        dappMetadata: { name: 'AgriBlockchain', url: location.href.split('#')[0] },
+        injectProvider: true
+      });
+      ethProvider = MMSDK.getProvider();
+    } catch (e) {
+      throw new Error('No se pudo inicializar MetaMask SDK');
+    }
+  }
+  if (!ethProvider) {
+    throw new Error('MetaMask no está disponible');
+  }
+  await ethProvider.request({ method: 'eth_requestAccounts' });
+  const web3Provider = new ethers.providers.Web3Provider(ethProvider, 'any');
+  const network = await web3Provider.getNetwork();
+  if (network.chainId !== CONFIG.blockchain.network.chainId) {
+    try {
+      await ethProvider.request({
+        method: 'wallet_switchEthereumChain',
+        params: [{ chainId: CONFIG.blockchain.network.chainIdHex }]
+      });
+    } catch (switchErr) {
+      if (switchErr && (switchErr.code === 4902 || switchErr.message?.includes('Unrecognized chain'))) {
+        try {
+          await ethProvider.request({
+            method: 'wallet_addEthereumChain',
+            params: [{
+              chainId: CONFIG.blockchain.network.chainIdHex,
+              chainName: CONFIG.blockchain.network.name,
+              nativeCurrency: { name: 'Sepolia ETH', symbol: 'SEP', decimals: 18 },
+              rpcUrls: [CONFIG.blockchain.network.rpcUrl],
+              blockExplorerUrls: ['https://sepolia.etherscan.io']
+            }]
+          });
+        } catch (addErr) {
+          throw new Error('Agrega la red Sepolia en MetaMask e inténtalo de nuevo');
+        }
+      } else {
+        throw new Error('Conecta MetaMask a Sepolia e inténtalo de nuevo');
+      }
+    }
+  }
+  const signer = web3Provider.getSigner();
+  const contract = new ethers.Contract(
+    CONFIG.blockchain.contractAddress,
+    CONFIG.blockchain.contractABI,
+    signer
+  );
+  return contract;
+}
+
+/**
  * NUEVA: Guarda datos de una planta en blockchain (setPlantData)
  */
 export async function savePlantData(plantId, data) {
   try {
-    const contract = await getSignerContract();
+    const contract = await getSignerContractSDK();
     const json = JSON.stringify(data);
 
     log(`⬆️ Enviando setPlantData(${plantId})...`);
@@ -326,3 +390,4 @@ export async function savePlantData(plantId, data) {
     throw err;
   }
 }
+

@@ -68,19 +68,21 @@ function updateZoomIndicator() {
   }
 }
 
-// Guardar en blockchain (botón de la cabecera)
-function initSaveControl() {
+// Nuevo: versión simple del control de guardado
+function initSaveControl2() {
   const btnSave = document.getElementById('btnSaveChain');
   if (!btnSave) return;
-  // Avisar si falta MetaMask
-  if (typeof window.ethereum === 'undefined') {
-    btnSave.title = 'MetaMask no está disponible';
-    btnSave.addEventListener('click', () => {
-      showAlert('MetaMask no está disponible. Abre la app en el navegador de MetaMask (móvil) o instala la extensión en el navegador de escritorio.', 'warning');
-    });
-    return;
-  }
   btnSave.addEventListener('click', async () => {
+    try {
+      await openSaveModal();
+    } catch (err) {
+      showAlert(`Error: ${err.message}`);
+    }
+  });
+}
+
+// Guardar en blockchain (botón de la cabecera)
+function initSaveControl() {\n  const btnSave = document.getElementById('btnSaveChain');\n  if (!btnSave) return;\n  btnSave.addEventListener('click', async () => {\n    try {\n      await openSaveModal();\n    } catch (err) {\n      showAlert(Error: );\n    }\n  });\n}\n  btnSave.addEventListener('click', async () => {
     try {
       if (typeof window.ethereum === 'undefined') {
         const isMobile = /Android|webOS|iPhone|iPad|iPod/i.test(navigator.userAgent);
@@ -140,7 +142,7 @@ async function init() {
     log('1/5 Inicializando controles...');
     initControls();
     initZoomControls();
-    initSaveControl();
+    initSaveControl2();
     
     // Paso 2: Registrar Service Worker
     log('2/5 Registrando Service Worker...');
@@ -292,3 +294,4 @@ async function openSaveModal() {
     }
   };
 }
+
