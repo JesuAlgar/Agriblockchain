@@ -1,6 +1,6 @@
 ﻿// ============================================
 // DATA MANAGER - BLOCKCHAIN + MAGIC.LINK
-// VERSION: FUNCIONANDO
+// VERSION: FINAL FIX (SIN PROBLEMAS MIME/CORS)
 // ============================================
 
 import { CONFIG, getPlantIdFromURL, STATE } from './config.js';
@@ -12,7 +12,6 @@ const RPC_URL = 'https://sepolia.infura.io/v3/' + INFURA_KEY;
 
 let magic;
 let provider;
-
 const plantDataCache = new Map();
 
 const FALLBACK_DATA = {
@@ -24,7 +23,7 @@ const FALLBACK_DATA = {
   recordedBy: "device-DEMO",
   fieldId: "DEMO-FIELD",
   seed_LotId: "DEMO-SEED-001",
-  seedVariety: "Demo Plant (Sin datos)",
+  seedVariety: "Demo Plant",
   seedSupplier: "Demo Supplier",
   seedTreatment: "demo",
   quantity_kg: 0.0,
@@ -35,61 +34,75 @@ const FALLBACK_DATA = {
 };
 
 /**
- * CARGA MAGIC.LINK DESDE CDN
+ * INYECTA MAGIC.LINK VIA FETCH + BLOB
  */
-async function loadMagicSDK() {
+async function injectMagicSDK() {
   return new Promise((resolve, reject) => {
     if (window.Magic) {
-      log('[Magic.link] SDK ya cargado');
       resolve(window.Magic);
       return;
     }
 
-    log('[Magic.link] Cargando SDK desde CDN...');
+    log('[Magic.link] Inyectando SDK...');
 
-    const script = document.createElement('script');
-    script.src = 'https://cdn.jsdelivr.net/npm/@magic-sdk/admin@latest/dist/magic.js';
-    script.async = true;
-    script.crossOrigin = 'anonymous';
+    const CDN_URL = 'https://cdn.jsdelivr.net/npm/@magic-sdk/admin@latest/dist/magic.js';
 
-    script.onload = () => {
-      log('[Magic.link] ✅ Script cargado');
-      
-      if (window.Magic) {
-        log('[Magic.link] ✅ Magic disponible');
-        resolve(window.Magic);
-      } else {
-        setTimeout(() => {
-          if (window.Magic) {
-            resolve(window.Magic);
-          } else {
-            reject(new Error('Magic no se definió'));
-          }
-        }, 500);
-      }
-    };
+    fetch(CDN_URL)
+      .then(res => res.text())
+      .then(scriptText => {
+        log('[Magic.link] Script descargado');
 
-    script.onerror = () => {
-      log('[Magic.link] ❌ Error cargando script', 'error');
-      reject(new Error('Error cargando Magic.link'));
-    };
+        try {
+          const blob = new Blob([scriptText], { type: 'application/javascript' });
+          const blobURL = URL.createObjectURL(blob);
 
-    document.head.appendChild(script);
+          const script = document.createElement('script');
+          script.src = blobURL;
+          script.async = true;
+
+          script.onload = () => {
+            log('[Magic.link] ✅ Inyectado');
+            URL.revokeObjectURL(blobURL);
+            
+            if (window.Magic) {
+              resolve(window.Magic);
+            } else {
+              setTimeout(() => {
+                if (window.Magic) {
+                  resolve(window.Magic);
+                } else {
+                  reject(new Error('Magic no disponible'));
+                }
+              }, 100);
+            }
+          };
+
+          script.onerror = () => {
+            reject(new Error('Error inyectando Magic'));
+          };
+
+          document.head.appendChild(script);
+        } catch (err) {
+          reject(err);
+        }
+      })
+      .catch(err => {
+        log('[Magic.link] ❌ Error: ' + err.message, 'error');
+        reject(err);
+      });
   });
 }
 
 /**
- * INICIALIZA MAGIC.LINK
+ * INICIALIZA MAGIC
  */
 export async function initMagic() {
-  if (magic) {
-    return magic;
-  }
+  if (magic) return magic;
 
   try {
     log('[Magic.link] Inicializando...');
 
-    const Magic = await loadMagicSDK();
+    const Magic = await injectMagicSDK();
 
     magic = new Magic(MAGIC_API_KEY, {
       network: {
@@ -98,8 +111,7 @@ export async function initMagic() {
       }
     });
 
-    log('[Magic.link] ✅ Inicializado con Sepolia');
-
+    log('[Magic.link] ✅ OK con Sepolia');
     provider = magic.rpcProvider;
     return magic;
 
@@ -110,7 +122,7 @@ export async function initMagic() {
 }
 
 /**
- * LOGIN CON EMAIL
+ * LOGIN
  */
 export async function loginWithMagic(email) {
   try {
@@ -118,18 +130,16 @@ export async function loginWithMagic(email) {
 
     magic = await initMagic();
 
-    const didToken = await magic.auth.loginWithMagicLink({
-      email: email
-    });
+    const didToken = await magic.auth.loginWithMagicLink({ email });
 
-    log('[Magic.link] ✅ Login OK');
-
+    log('[Magic.link] ✅ OK');
     localStorage.setItem('magic_did_token', didToken);
 
     const metadata = await magic.user.getMetadata();
-    log('[Magic.link] ✅ Dirección: ' + metadata.publicAddress);
+    log('[Magic.link] ✅ Dir: ' + metadata.publicAddress);
+    
     console.log('================================');
-    console.log('COPIA ESTA DIRECCION:');
+    console.log('TU DIRECCION PARA FAUCET:');
     console.log(metadata.publicAddress);
     console.log('================================');
 
@@ -142,21 +152,14 @@ export async function loginWithMagic(email) {
 }
 
 /**
- * OBTENER USUARIO
+ * GET USER
  */
 export async function getMagicUser() {
   try {
     magic = await initMagic();
-
     const isLoggedIn = await magic.user.isLoggedIn();
-
-    if (!isLoggedIn) {
-      return null;
-    }
-
-    const metadata = await magic.user.getMetadata();
-    return metadata;
-
+    if (!isLoggedIn) return null;
+    return await magic.user.getMetadata();
   } catch (error) {
     return null;
   }
@@ -177,7 +180,7 @@ export async function logoutMagic() {
 }
 
 /**
- * CONECTA A SEPOLIA
+ * GET CONTRACT
  */
 async function connectAndGetContract() {
   try {
@@ -188,8 +191,6 @@ async function connectAndGetContract() {
 
     const ethersProvider = new ethers.providers.Web3Provider(provider, 'any');
     const signer = ethersProvider.getSigner();
-
-    log('[Blockchain] ✅ Signer OK');
 
     const network = await ethersProvider.getNetwork();
     log('[Blockchain] ChainId: ' + network.chainId);
@@ -204,8 +205,7 @@ async function connectAndGetContract() {
       signer
     );
 
-    log('[Blockchain] ✅ Contrato OK');
-
+    log('[Blockchain] ✅ OK');
     return contract;
 
   } catch (error) {
@@ -215,7 +215,7 @@ async function connectAndGetContract() {
 }
 
 /**
- * GUARDA EN BLOCKCHAIN
+ * SAVE TO BLOCKCHAIN
  */
 export async function savePlantData(plantId, data) {
   try {
@@ -230,7 +230,6 @@ export async function savePlantData(plantId, data) {
     log('[Blockchain] https://sepolia.etherscan.io/tx/' + tx.hash);
 
     const receipt = await tx.wait();
-
     log('[Blockchain] ✅ Bloque: ' + receipt.blockNumber);
 
     return receipt;
@@ -242,7 +241,7 @@ export async function savePlantData(plantId, data) {
 }
 
 /**
- * CARGA DATOS
+ * LOAD PLANT DATA
  */
 export async function loadPlantData(plantIndex) {
   try {
@@ -251,17 +250,10 @@ export async function loadPlantData(plantIndex) {
 
     const response = await fetch(url, { cache: 'no-store' });
 
-    if (!response.ok) {
-      return FALLBACK_DATA;
-    }
+    if (!response.ok) return FALLBACK_DATA;
 
     const data = await response.json();
-    log('✅ Datos: ' + data.seedVariety);
-
-    plantDataCache.set(plantIndex, {
-      data: data,
-      lastUpdate: Date.now()
-    });
+    plantDataCache.set(plantIndex, { data, lastUpdate: Date.now() });
 
     return data;
 
@@ -281,7 +273,7 @@ export function clearPlantCache(plantIndex) {
 export async function preloadPlantData(count = 3) {
   const promises = [];
   for (let i = 0; i < count; i++) {
-    promises.push(loadPlantData(i).catch(err => {}));
+    promises.push(loadPlantData(i).catch(() => {}));
   }
   await Promise.all(promises);
 }
