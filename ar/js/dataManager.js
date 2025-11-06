@@ -303,87 +303,132 @@ async function getSignerContract() {
 }
 
 /**
- * NUEVA: Carga del MetaMask SDK desde archivo local vendorizado
+ * ✅ SOLO UMD LOCAL: Carga del MetaMask SDK desde archivo vendorizado en index.html
+ * NO inyección dinámica, NO opciones 1.x (communicationLayerPreference, etc.)
  */
 async function __loadMetaMaskSDK() {
-  // El SDK debe estar incluido en index.html como UMD local
-  if (window.MetaMaskSDK) return window.MetaMaskSDK;
-  throw new Error('MetaMask SDK no cargado. Incluye ./assets/metamask-sdk.min.js (o .iife.js) en index.html');
-}async function getSignerContractSDK() {
-  if (typeof window === 'undefined') {
-    throw new Error('Entorno sin ventana');
+  // El SDK DEBE estar incluido en index.html como UMD local
+  if (typeof window.MetaMaskSDK === 'function') {
+    log('[MetaMask SDK] ✓ Detectado en window.MetaMaskSDK (UMD local)');
+    return { default: window.MetaMaskSDK };
   }
+  throw new Error(
+    '[MetaMask SDK] ❌ No encontrado. Verifica que index.html carga: <script src="./assets/metamask-sdk.iife.js"></script>'
+  );
+}
 
-  let ethProvider = null;
+/**
+ * ✅ SIMPLIFICADO: Solo deeplink, sin opciones obsoletas de v1.x
+ * ❌ ELIMINADAS: communicationLayerPreference, shouldShimWeb3, injectProvider, enableAnalytics, forceDeleteProvider
+ */
+async function getSignerContractSDK() {
+  try {
+    if (typeof window === 'undefined') {
+      throw new Error('Entorno sin ventana');
+    }
 
-  // Intentar usar window.ethereum primero (extensión o app ya inyectada)
-  if (window.ethereum) {
-    log('[MetaMask] Usando provider ya inyectado (extensión o app)');
-    ethProvider = window.ethereum;
-  } else {
-    // Si no hay provider, cargar SDK para abrir MetaMask app
-    try {
-      log('[MetaMask] No hay provider inyectado, cargando SDK...');
+    log('[Blockchain] Inicializando MetaMask...');
+
+    let ethProvider = null;
+
+    // ✅ INTENTO 1: Usar window.ethereum si ya está inyectado (extensión/app)
+    if (window.ethereum) {
+      log('[MetaMask] ✓ Provider ya inyectado (extensión o app)');
+      ethProvider = window.ethereum;
+    } else {
+      // ✅ INTENTO 2: Cargar SDK para deeplink en móvil
+      log('[MetaMask] No hay provider inyectado, cargando SDK UMD local...');
+      
       const SDKMod = await __loadMetaMaskSDK();
       const SDKCtor = SDKMod.default || SDKMod;
 
-      log('[MetaMask SDK] Inicializando (deeplink habilitado)...');
+      log('[MetaMask SDK] Inicializando con opciones v11+ (deeplink, sin modal)...');
+      
+      // ✅ SOLO opciones válidas actuales (NO 1.x)
       const MMSDK = new SDKCtor({
-        dappMetadata: { name: 'AgriBlockchain', url: location.origin },
-        useDeeplink: true,
-        checkInstallationImmediately: false
+        dappMetadata: {
+          name: 'AgriBlockchain',
+          url: location.origin
+        },
+        useDeeplink: true, // 🎯 Abre app en móvil, NO modal
+        checkInstallationImmediately: false // 🎯 Evita modal de instalación
       });
 
+      log('[MetaMask SDK] Obteniendo provider...');
       ethProvider = MMSDK.getProvider();
-      log('[MetaMask SDK] ✅ Provider obtenido del SDK');
-    } catch (e) {
-      log(`[MetaMask SDK] ❌ Error: ${e.message}`, 'error');
-      if (e.stack) {
-        console.error('[MetaMask SDK] Stack trace:', e.stack);
+      
+      if (!ethProvider) {
+        throw new Error('[MetaMask SDK] getProvider() retornó null');
       }
-      throw new Error(`No se pudo inicializar MetaMask SDK: ${e.message}`);
+      
+      log('[MetaMask SDK] ✓ Provider obtenido');
     }
-  }
-  if (!ethProvider) {
-    throw new Error('MetaMask no estÃ¡ disponible');
-  }
-  await ethProvider.request({ method: 'eth_requestAccounts' });
-  const web3Provider = new ethers.providers.Web3Provider(ethProvider, 'any');
-  const network = await web3Provider.getNetwork();
-  if (network.chainId !== CONFIG.blockchain.network.chainId) {
-    try {
-      await ethProvider.request({
-        method: 'wallet_switchEthereumChain',
-        params: [{ chainId: CONFIG.blockchain.network.chainIdHex }]
-      });
-    } catch (switchErr) {
-      if (switchErr && (switchErr.code === 4902 || switchErr.message?.includes('Unrecognized chain'))) {
-        try {
-          await ethProvider.request({
-            method: 'wallet_addEthereumChain',
-            params: [{
-              chainId: CONFIG.blockchain.network.chainIdHex,
-              chainName: CONFIG.blockchain.network.name,
-              nativeCurrency: { name: 'Sepolia ETH', symbol: 'SEP', decimals: 18 },
-              rpcUrls: [CONFIG.blockchain.network.rpcUrl],
-              blockExplorerUrls: ['https://sepolia.etherscan.io']
-            }]
-          });
-        } catch (addErr) {
-          throw new Error('Agrega la red Sepolia en MetaMask e intÃ©ntalo de nuevo');
+
+    // ✅ Solicitar acceso a cuentas
+    log('[MetaMask] Solicitando cuentas...');
+    await ethProvider.request({ method: 'eth_requestAccounts' });
+    log('[MetaMask] ✓ Cuentas autorizadas');
+
+    // ✅ Crear provider de ethers.js
+    const web3Provider = new ethers.providers.Web3Provider(ethProvider, 'any');
+    const signer = web3Provider.getSigner();
+    const network = await web3Provider.getNetwork();
+
+    log(`[Blockchain] Chain actual: ${network.chainId}`);
+
+    // ✅ Si no es Sepolia (11155111), cambiar
+    if (network.chainId !== CONFIG.blockchain.network.chainId) {
+      log('[Blockchain] Cambiando a Sepolia...');
+      
+      try {
+        await ethProvider.request({
+          method: 'wallet_switchEthereumChain',
+          params: [{ chainId: CONFIG.blockchain.network.chainIdHex }]
+        });
+        log('[Blockchain] ✓ Chain cambiado a Sepolia');
+      } catch (switchErr) {
+        // Si la red no existe (4902), intentar agregarla
+        if (switchErr?.code === 4902 || switchErr?.message?.includes('Unrecognized chain')) {
+          log('[Blockchain] Red Sepolia no agregada, intentando...');
+          
+          try {
+            await ethProvider.request({
+              method: 'wallet_addEthereumChain',
+              params: [{
+                chainId: CONFIG.blockchain.network.chainIdHex,
+                chainName: CONFIG.blockchain.network.name,
+                nativeCurrency: { name: 'Sepolia ETH', symbol: 'SEP', decimals: 18 },
+                rpcUrls: [CONFIG.blockchain.network.rpcUrl],
+                blockExplorerUrls: ['https://sepolia.etherscan.io']
+              }]
+            });
+            log('[Blockchain] ✓ Red Sepolia agregada');
+          } catch (addErr) {
+            throw new Error('[Blockchain] Agrega Sepolia manualmente en MetaMask');
+          }
+        } else {
+          throw new Error('[Blockchain] Conecta MetaMask a Sepolia');
         }
-      } else {
-        throw new Error('Conecta MetaMask a Sepolia e intÃ©ntalo de nuevo');
       }
     }
+
+    // ✅ Crear instancia del contrato
+    const contract = new ethers.Contract(
+      CONFIG.blockchain.contractAddress,
+      CONFIG.blockchain.contractABI,
+      signer
+    );
+
+    log('[Blockchain] ✓ Contrato inicializado');
+    return contract;
+
+  } catch (err) {
+    log(`[Blockchain] ❌ Error: ${err.message}`, 'error');
+    if (err.stack) {
+      console.error('[Blockchain] Stack:', err.stack);
+    }
+    throw err;
   }
-  const signer = web3Provider.getSigner();
-  const contract = new ethers.Contract(
-    CONFIG.blockchain.contractAddress,
-    CONFIG.blockchain.contractABI,
-    signer
-  );
-  return contract;
 }
 
 /**
@@ -422,10 +467,3 @@ export async function savePlantData(plantId, data) {
     throw err;
   }
 }
-
-
-
-
-
-
-

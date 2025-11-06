@@ -1,4 +1,9 @@
-﻿const CACHE_NAME = 'ar-planta-v4';
+﻿/**
+ * Service Worker - Cache strategy + no interceptar cross-origin
+ * ✅ v5: skipWaiting, clientsClaim, exclusión de metamask-sdk
+ */
+
+const CACHE_NAME = 'ar-planta-v5'; // ✅ Bumped para forzar actualización
 const urlsToCache = [
   './',
   './index.html',
@@ -16,66 +21,68 @@ const urlsToCache = [
   // IMPORTANTE: NO cachear ./assets/metamask-sdk.min.js para evitar versiones obsoletas
 ];
 
-// Instalar
+// ✅ Instalar y skipWaiting inmediato
 self.addEventListener('install', event => {
   event.waitUntil(
     caches.open(CACHE_NAME)
       .then(cache => {
-        console.log('Service Worker: Cacheando archivos');
+        console.log('[SW] Cacheando archivos...');
         return cache.addAll(urlsToCache);
       })
       .catch(err => {
-        console.warn('Service Worker: Error cacheando:', err);
+        console.warn('[SW] Error cacheando:', err);
       })
   );
-  // Forzar activaciÃ³n inmediata
+  // ✅ Forzar activación inmediata (saltar waiting)
   self.skipWaiting();
 });
 
-// Activar
+// ✅ Activar con clientsClaim para control inmediato
 self.addEventListener('activate', event => {
   event.waitUntil(
     caches.keys().then(cacheNames => {
       return Promise.all(
         cacheNames.map(cacheName => {
           if (cacheName !== CACHE_NAME) {
-            console.log('Service Worker: Borrando cache viejo:', cacheName);
+            console.log('[SW] Borrando cache viejo:', cacheName);
             return caches.delete(cacheName);
           }
         })
       );
     })
   );
-  // Tomar control inmediato
-  return self.clients.claim();
+  // ✅ Tomar control inmediato de clientes
+  self.clients.claim();
 });
 
-// Fetch
+// ✅ Fetch: NO interceptar cross-origin
 self.addEventListener('fetch', event => {
   const url = new URL(event.request.url);
 
-  // NO interceptar peticiones cross-origin (CDNs, APIs externas, etc.)
+  // ❌ NO interceptar cross-origin (CDNs, APIs externas)
   if (url.origin !== self.location.origin) {
-    // Dejar que el navegador maneje cross-origin directamente
-    return;
+    console.log('[SW] ❌ Cross-origin, pasando a red:', url.href);
+    return; // Dejar que fetch proceda sin interceptar
   }
 
-  // NO cachear el SDK de MetaMask para evitar problemas de versión
+  // ❌ NO cachear el SDK de MetaMask para evitar versiones obsoletas
   if (url.pathname.includes('metamask-sdk')) {
-    // Fetch directo, sin cache
+    console.log('[SW] ❌ MetaMask SDK, fetch directo sin cache');
     event.respondWith(fetch(event.request));
     return;
   }
 
-  // Para recursos same-origin (nuestros archivos locales)
+  // ✅ Para recursos same-origin (nuestros archivos locales)
   event.respondWith(
     caches.match(event.request)
       .then(response => {
         // Si está en cache, devolverlo
         if (response) {
+          console.log('[SW] ✓ Cache hit:', url.pathname);
           return response;
         }
         // Si no, hacer fetch
+        console.log('[SW] Cache miss, fetching:', url.pathname);
         return fetch(event.request).catch(() => {
           // Si falla el fetch, devolver página offline si es HTML
           if (event.request.headers.get('accept')?.includes('text/html')) {
@@ -86,4 +93,4 @@ self.addEventListener('fetch', event => {
   );
 });
 
-
+console.log('[SW] Service Worker v5 listo');

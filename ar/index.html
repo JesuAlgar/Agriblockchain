@@ -196,8 +196,10 @@
     </div>
   </div>
 
-  <!-- MetaMask SDK local (UMD). Coloca el archivo en ./assets/metamask-sdk.min.js -->
-  <script src="./assets/metamask-sdk.min.js"></script>
+  <!-- ✅ CARGA ÚNICA DEL SDK METAMASK LOCAL (UMD/IIFE)
+       NO cambiar esta línea ni agregar otra carga del SDK
+       Si hay errores, verifica que ./assets/metamask-sdk.iife.js existe -->
+  <script src="./assets/metamask-sdk.iife.js"></script>
 
   <!-- Scripts modulares -->
   <script type="module" src="./js/app.js"></script>
@@ -221,10 +223,3 @@
 
 </body>
 </html>
-
-
-
-
-
-
-

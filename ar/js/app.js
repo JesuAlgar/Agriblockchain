@@ -343,5 +343,3 @@ async function openSaveModal() {
     }
   };
 }
-
-
