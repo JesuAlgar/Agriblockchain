@@ -1,0 +1,37 @@
+[build]
+  # Publicar desde la carpeta ar/
+  publish = "ar"
+  # No hay comando de build (es HTML estático)
+  command = ""
+
+[[headers]]
+  # Headers para todos los archivos
+  for = "/*"
+  [headers.values]
+    # CORS permisivo para desarrollo
+    Access-Control-Allow-Origin = "*"
+    # Headers de seguridad básicos
+    X-Frame-Options = "SAMEORIGIN"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+
+[[headers]]
+  # Headers específicos para el SDK de MetaMask
+  for = "/assets/metamask-sdk.min.js"
+  [headers.values]
+    Content-Type = "application/javascript; charset=utf-8"
+    Cache-Control = "public, max-age=86400, must-revalidate"
+
+[[headers]]
+  # Headers para Service Worker
+  for = "/sw.js"
+  [headers.values]
+    Content-Type = "application/javascript; charset=utf-8"
+    Cache-Control = "public, max-age=0, must-revalidate"
+    Service-Worker-Allowed = "/"
+
+[[redirects]]
+  # Redirect raíz a la app AR
+  from = "/"
+  to = "/index.html"
+  status = 200
