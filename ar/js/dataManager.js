@@ -1,15 +1,12 @@
 ﻿// ============================================
 // DATA MANAGER - BLOCKCHAIN + MAGIC.LINK
-// VERSION: SIMPLIFICADA (SIN CARGAR SDK)
+// VERSION: FUNCIONANDO
 // ============================================
 
 import { CONFIG, getPlantIdFromURL, STATE } from './config.js';
 import { log } from './utils.js';
 
-// Magic.link API Key
 const MAGIC_API_KEY = 'pk_live_37872478211D964B';
-
-// Infura Sepolia
 const INFURA_KEY = 'f4ec683049b74beab43d0ec659c28f6a';
 const RPC_URL = 'https://sepolia.infura.io/v3/' + INFURA_KEY;
 
@@ -38,63 +35,74 @@ const FALLBACK_DATA = {
 };
 
 /**
- * INICIALIZA MAGIC.LINK (ASUME QUE YA ESTA INYECTADO)
+ * CARGA MAGIC.LINK DESDE CDN
  */
-export async function initMagic() {
-  if (magic) return magic;
-  
-  log('[Magic.link] Verificando si SDK está disponible...');
-  
-  // Esperar a que Magic esté disponible
-  let attempts = 0;
-  while (!window.Magic && attempts < 20) {
-    await new Promise(r => setTimeout(r, 500));
-    attempts++;
-  }
-  
-  if (!window.Magic) {
-    throw new Error('Magic.link SDK no disponible. Asegúrate de que está cargado en index.html');
-  }
-  
-  log('[Magic.link] ✅ SDK disponible');
-  
-  magic = new window.Magic(MAGIC_API_KEY, {
-    network: {
-      rpcUrl: RPC_URL,
-      chainId: 11155111
+async function loadMagicSDK() {
+  return new Promise((resolve, reject) => {
+    if (window.Magic) {
+      log('[Magic.link] SDK ya cargado');
+      resolve(window.Magic);
+      return;
     }
+
+    log('[Magic.link] Cargando SDK desde CDN...');
+
+    const script = document.createElement('script');
+    script.src = 'https://cdn.jsdelivr.net/npm/@magic-sdk/admin@latest/dist/magic.js';
+    script.async = true;
+    script.crossOrigin = 'anonymous';
+
+    script.onload = () => {
+      log('[Magic.link] ✅ Script cargado');
+      
+      if (window.Magic) {
+        log('[Magic.link] ✅ Magic disponible');
+        resolve(window.Magic);
+      } else {
+        setTimeout(() => {
+          if (window.Magic) {
+            resolve(window.Magic);
+          } else {
+            reject(new Error('Magic no se definió'));
+          }
+        }, 500);
+      }
+    };
+
+    script.onerror = () => {
+      log('[Magic.link] ❌ Error cargando script', 'error');
+      reject(new Error('Error cargando Magic.link'));
+    };
+
+    document.head.appendChild(script);
   });
-  
-  log('[Magic.link] ✅ Inicializado con Sepolia');
-  
-  provider = magic.rpcProvider;
-  return magic;
 }
 
 /**
- * Login con Magic.link (Email)
+ * INICIALIZA MAGIC.LINK
  */
-export async function loginWithMagic(email) {
+export async function initMagic() {
+  if (magic) {
+    return magic;
+  }
+
   try {
-    log('[Magic.link] 📧 Login con: ' + email);
-    
-    magic = await initMagic();
-    
-    const didToken = await magic.auth.loginWithMagicLink({
-      email: email
+    log('[Magic.link] Inicializando...');
+
+    const Magic = await loadMagicSDK();
+
+    magic = new Magic(MAGIC_API_KEY, {
+      network: {
+        rpcUrl: RPC_URL,
+        chainId: 11155111
+      }
     });
-    
-    log('[Magic.link] ✅ Login exitoso');
-    
-    localStorage.setItem('magic_did_token', didToken);
-    
-    // Obtener dirección
-    const metadata = await magic.user.getMetadata();
-    log('[Magic.link] ✅ Tu dirección: ' + metadata.publicAddress);
-    console.log('IMPORTANTE - COPIA ESTA DIRECCION: ' + metadata.publicAddress);
-    
-    return didToken;
-    
+
+    log('[Magic.link] ✅ Inicializado con Sepolia');
+
+    provider = magic.rpcProvider;
+    return magic;
+
   } catch (error) {
     log('[Magic.link] ❌ Error: ' + error.message, 'error');
     throw error;
@@ -102,75 +110,104 @@ export async function loginWithMagic(email) {
 }
 
 /**
- * Obtener usuario logueado
+ * LOGIN CON EMAIL
+ */
+export async function loginWithMagic(email) {
+  try {
+    log('[Magic.link] 📧 Login: ' + email);
+
+    magic = await initMagic();
+
+    const didToken = await magic.auth.loginWithMagicLink({
+      email: email
+    });
+
+    log('[Magic.link] ✅ Login OK');
+
+    localStorage.setItem('magic_did_token', didToken);
+
+    const metadata = await magic.user.getMetadata();
+    log('[Magic.link] ✅ Dirección: ' + metadata.publicAddress);
+    console.log('================================');
+    console.log('COPIA ESTA DIRECCION:');
+    console.log(metadata.publicAddress);
+    console.log('================================');
+
+    return didToken;
+
+  } catch (error) {
+    log('[Magic.link] ❌ Error: ' + error.message, 'error');
+    throw error;
+  }
+}
+
+/**
+ * OBTENER USUARIO
  */
 export async function getMagicUser() {
   try {
     magic = await initMagic();
-    
+
     const isLoggedIn = await magic.user.isLoggedIn();
-    
+
     if (!isLoggedIn) {
       return null;
     }
-    
+
     const metadata = await magic.user.getMetadata();
     return metadata;
-    
+
   } catch (error) {
-    log('[Magic.link] Error: ' + error.message, 'error');
     return null;
   }
 }
 
 /**
- * Logout
+ * LOGOUT
  */
 export async function logoutMagic() {
   try {
     magic = await initMagic();
     await magic.user.logout();
     localStorage.removeItem('magic_did_token');
-    log('[Magic.link] ✅ Logout exitoso');
+    log('[Magic.link] ✅ Logout');
   } catch (error) {
     log('[Magic.link] Error: ' + error.message, 'error');
   }
 }
 
 /**
- * Conecta y obtiene el contrato en SEPOLIA
+ * CONECTA A SEPOLIA
  */
 async function connectAndGetContract() {
   try {
-    log('[Blockchain] Conectando a Sepolia...');
-    
+    log('[Blockchain] Conectando...');
+
     magic = await initMagic();
     provider = magic.rpcProvider;
-    
-    log('[Blockchain] ✅ Provider conectado');
-    
+
     const ethersProvider = new ethers.providers.Web3Provider(provider, 'any');
     const signer = ethersProvider.getSigner();
-    
-    log('[Blockchain] ✅ Signer obtenido');
-    
+
+    log('[Blockchain] ✅ Signer OK');
+
     const network = await ethersProvider.getNetwork();
-    log('[Blockchain] Red: chainId ' + network.chainId);
-    
+    log('[Blockchain] ChainId: ' + network.chainId);
+
     if (network.chainId !== 11155111) {
-      throw new Error('No estamos en Sepolia');
+      throw new Error('No es Sepolia');
     }
-    
+
     const contract = new ethers.Contract(
       CONFIG.blockchain.contractAddress,
       CONFIG.blockchain.contractABI,
       signer
     );
-    
-    log('[Blockchain] ✅ Contrato listo');
-    
+
+    log('[Blockchain] ✅ Contrato OK');
+
     return contract;
-    
+
   } catch (error) {
     log('[Blockchain] ❌ Error: ' + error.message, 'error');
     throw error;
@@ -178,30 +215,26 @@ async function connectAndGetContract() {
 }
 
 /**
- * Guarda datos en blockchain
+ * GUARDA EN BLOCKCHAIN
  */
 export async function savePlantData(plantId, data) {
   try {
     log('[Blockchain] Guardando...');
-    
+
     const contract = await connectAndGetContract();
     const json = JSON.stringify(data);
-    
-    log('[Blockchain] 📤 Enviando tx a Sepolia...');
-    
+
     const tx = await contract.setPlantData(plantId, json);
-    
-    log('[Blockchain] ✅ Tx enviada');
-    log('[Blockchain] Hash: ' + tx.hash);
+
+    log('[Blockchain] ✅ TX: ' + tx.hash);
     log('[Blockchain] https://sepolia.etherscan.io/tx/' + tx.hash);
-    
-    log('[Blockchain] ⏳ Esperando confirmación...');
+
     const receipt = await tx.wait();
-    
-    log('[Blockchain] ✅ CONFIRMADA en bloque: ' + receipt.blockNumber);
-    
+
+    log('[Blockchain] ✅ Bloque: ' + receipt.blockNumber);
+
     return receipt;
-    
+
   } catch (error) {
     log('[Blockchain] ❌ Error: ' + error.message, 'error');
     throw error;
@@ -209,29 +242,29 @@ export async function savePlantData(plantId, data) {
 }
 
 /**
- * Carga datos de una planta
+ * CARGA DATOS
  */
 export async function loadPlantData(plantIndex) {
   try {
     const plantId = getPlantIdFromURL();
     const url = './data/' + encodeURIComponent(plantId) + '.json';
-    
+
     const response = await fetch(url, { cache: 'no-store' });
-    
+
     if (!response.ok) {
       return FALLBACK_DATA;
     }
-    
+
     const data = await response.json();
     log('✅ Datos: ' + data.seedVariety);
-    
+
     plantDataCache.set(plantIndex, {
       data: data,
       lastUpdate: Date.now()
     });
-    
+
     return data;
-    
+
   } catch (error) {
     return FALLBACK_DATA;
   }
