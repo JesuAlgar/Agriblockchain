@@ -1,10 +1,15 @@
-﻿// ============================================
-// DATA MANAGER - BLOCKCHAIN + METAMASK
-// VERSION: MEJORADA CON MEJOR DETECCION
-// ============================================
-
-import { CONFIG, getPlantIdFromURL, STATE } from './config.js';
+﻿import { CONFIG, getPlantIdFromURL, STATE } from './config.js';
 import { log } from './utils.js';
+
+// Magic.link API Key - CONFIGURADA ✅
+const MAGIC_API_KEY = 'pk_live_37872478211D964B';
+
+// Infura API Key - CONFIGURADA ✅
+const INFURA_KEY = 'f4ec683049b74beab43d0ec659c28f6a';
+const RPC_URL = 'https://sepolia.infura.io/v3/' + INFURA_KEY;
+
+let magic;
+let provider;
 
 const plantDataCache = new Map();
 
@@ -28,126 +33,149 @@ const FALLBACK_DATA = {
 };
 
 /**
- * ESPERA A QUE window.ethereum ESTE DISPONIBLE
- * Intenta 30 veces (15 segundos)
+ * INICIALIZA MAGIC.LINK CON SEPOLIA
  */
-async function waitForMetaMask(maxAttempts = 30) {
-  log('[Blockchain] ========== DETECTANDO METAMASK ==========');
-  log('[Blockchain] Intentando hasta 15 segundos...');
+export async function initMagic() {
+  if (magic) return magic;
   
-  for (let i = 0; i < maxAttempts; i++) {
-    if (window.ethereum) {
-      log('[Blockchain] ✅ MetaMask DETECTADA en intento: ' + (i + 1) + '/' + maxAttempts);
-      return window.ethereum;
-    }
+  log('[Magic.link] ✅ CONFIGURADO');
+  log('[Magic.link] API Key: pk_live_37872478211D964B');
+  log('[Magic.link] RPC: https://sepolia.infura.io/v3/f4ec683049b74beab43d0ec659c28f6a');
+  log('[Magic.link] Inicializando...');
+  
+  if (!window.Magic) {
+    log('[Magic.link] Cargando Magic SDK desde CDN...');
     
-    if (i % 5 === 0) {
-      log('[Blockchain] Intento ' + (i + 1) + '/' + maxAttempts + '... esperando MetaMask');
-    }
+    return new Promise((resolve, reject) => {
+      const script = document.createElement('script');
+      script.src = 'https://cdn.jsdelivr.net/npm/@magic-sdk/admin@latest/dist/magic.js';
+      script.async = true;
+      
+      script.onload = () => {
+        log('[Magic.link] SDK cargado ✅');
+        
+        magic = new window.Magic(MAGIC_API_KEY, {
+          network: {
+            rpcUrl: RPC_URL,
+            chainId: 11155111
+          }
+        });
+        
+        log('[Magic.link] ✅ LISTO para Sepolia (chainId: 11155111)');
+        
+        provider = magic.rpcProvider;
+        resolve(magic);
+      };
+      
+      script.onerror = () => {
+        log('[Magic.link] ❌ Error cargando SDK', 'error');
+        reject(new Error('Error cargando Magic.link SDK'));
+      };
+      
+      document.head.appendChild(script);
+    });
+  } else {
+    magic = new window.Magic(MAGIC_API_KEY, {
+      network: {
+        rpcUrl: RPC_URL,
+        chainId: 11155111
+      }
+    });
     
-    // Esperar 500ms entre intentos
-    await new Promise(resolve => setTimeout(resolve, 500));
+    log('[Magic.link] ✅ Inicializado');
+    provider = magic.rpcProvider;
+    return magic;
   }
-  
-  log('[Blockchain] ❌ MetaMask NO detectada después de 15 segundos');
-  log('[Blockchain] ========== VERIFICACIONES ==========');
-  log('[Blockchain] 1. ¿MetaMask app ABIERTA en el móvil? (icono zorro)');
-  log('[Blockchain] 2. ¿Wallet CREADA en MetaMask?');
-  log('[Blockchain] 3. ¿Red SEPOLIA seleccionada en MetaMask?');
-  log('[Blockchain] 4. ¿El teléfono tiene internet?');
-  log('[Blockchain] 5. Intenta: Cierra Chrome → Abre MetaMask → Abre Chrome');
-  log('[Blockchain] ==========================================');
-  
-  throw new Error(
-    'MetaMask NO inyectada.\n\n' +
-    'Verifica:\n' +
-    '1. MetaMask app está ABIERTA (ves el icono zorro)\n' +
-    '2. Recargaste la página DESPUES de abrir MetaMask\n' +
-    '3. En Chrome móvil (no en navegador por defecto)\n' +
-    '\n' +
-    'Solución:\n' +
-    '1. Cierra Chrome completamente\n' +
-    '2. Abre MetaMask app\n' +
-    '3. Abre Chrome\n' +
-    '4. Ve a tu app\n' +
-    '5. Intenta de nuevo'
-  );
 }
 
 /**
- * Conecta a MetaMask usando window.ethereum
+ * Login con Magic.link (Email)
+ */
+export async function loginWithMagic(email) {
+  try {
+    log('[Magic.link] 📧 Login con: ' + email);
+    
+    magic = await initMagic();
+    
+    const didToken = await magic.auth.loginWithMagicLink({
+      email: email
+    });
+    
+    log('[Magic.link] ✅ Login exitoso');
+    log('[Magic.link] 📬 Revisa tu email para el magic link');
+    
+    localStorage.setItem('magic_did_token', didToken);
+    
+    return didToken;
+    
+  } catch (error) {
+    log('[Magic.link] ❌ Error: ' + error.message, 'error');
+    throw error;
+  }
+}
+
+/**
+ * Obtener usuario logueado
+ */
+export async function getMagicUser() {
+  try {
+    magic = await initMagic();
+    
+    const isLoggedIn = await magic.user.isLoggedIn();
+    
+    if (!isLoggedIn) {
+      return null;
+    }
+    
+    const metadata = await magic.user.getMetadata();
+    return metadata;
+    
+  } catch (error) {
+    log('[Magic.link] Error obteniendo usuario: ' + error.message, 'error');
+    return null;
+  }
+}
+
+/**
+ * Logout
+ */
+export async function logoutMagic() {
+  try {
+    magic = await initMagic();
+    await magic.user.logout();
+    localStorage.removeItem('magic_did_token');
+    log('[Magic.link] ✅ Logout exitoso');
+  } catch (error) {
+    log('[Magic.link] Error en logout: ' + error.message, 'error');
+  }
+}
+
+/**
+ * Conecta y obtiene el contrato en SEPOLIA
  */
 async function connectAndGetContract() {
   try {
-    log('[Blockchain] ========== CONECTANDO A METAMASK ==========');
+    log('[Blockchain] ========== CONECTANDO A SEPOLIA ==========');
     
-    // ESPERAR a que MetaMask esté disponible
-    const ethereum = await waitForMetaMask();
+    magic = await initMagic();
+    provider = magic.rpcProvider;
     
-    log('[Blockchain] ✅ window.ethereum disponible');
-    log('[Blockchain] Solicitando autorización de cuentas...');
+    log('[Blockchain] ✅ Provider Magic.link conectado');
     
-    // Solicitar cuentas - ESTO ABRE METAMASK SI ESTA INSTALADA
-    let accounts;
-    try {
-      accounts = await ethereum.request({ 
-        method: 'eth_requestAccounts' 
-      });
-    } catch (requestError) {
-      if (requestError.code === 4001) {
-        log('[Blockchain] ❌ Usuario rechazó la conexión en MetaMask', 'error');
-        throw new Error('Debes autorizar la conexión en MetaMask');
-      }
-      throw requestError;
-    }
-    
-    if (!accounts || accounts.length === 0) {
-      throw new Error('No se obtuvieron cuentas de MetaMask');
-    }
-    
-    log('[Blockchain] ✅ Conectado a: ' + accounts[0]);
-    
-    // Crear Web3 provider con ethers
-    const ethersProvider = new ethers.providers.Web3Provider(ethereum, 'any');
+    const ethersProvider = new ethers.providers.Web3Provider(provider, 'any');
     const signer = ethersProvider.getSigner();
     
     log('[Blockchain] ✅ Signer obtenido');
     
-    // Verificar red
     const network = await ethersProvider.getNetwork();
     log('[Blockchain] Red actual: chainId ' + network.chainId);
     
-    // Si no es Sepolia (11155111), cambiar
     if (network.chainId !== 11155111) {
-      log('[Blockchain] ⚠️  No estamos en Sepolia, intentando cambiar...');
-      
-      try {
-        await ethereum.request({
-          method: 'wallet_switchEthereumChain',
-          params: [{ chainId: '0xaa36a7' }]
-        });
-        log('[Blockchain] ✅ Red cambiada a Sepolia');
-      } catch (switchError) {
-        if (switchError.code === 4902) {
-          log('[Blockchain] Sepolia no conocida, agregando red...');
-          await ethereum.request({
-            method: 'wallet_addEthereumChain',
-            params: [{
-              chainId: '0xaa36a7',
-              chainName: 'Sepolia',
-              nativeCurrency: { name: 'ETH', symbol: 'ETH', decimals: 18 },
-              rpcUrls: ['https://sepolia.infura.io/v3/YOUR_INFURA_KEY'],
-              blockExplorerUrls: ['https://sepolia.etherscan.io']
-            }]
-          });
-          log('[Blockchain] ✅ Sepolia agregada');
-        } else {
-          throw switchError;
-        }
-      }
+      throw new Error('No estamos en Sepolia. ChainId: ' + network.chainId);
     }
     
-    // Crear contrato
+    log('[Blockchain] ✅ Red confirmada: SEPOLIA');
+    
     const contract = new ethers.Contract(
       CONFIG.blockchain.contractAddress,
       CONFIG.blockchain.contractABI,
@@ -155,12 +183,12 @@ async function connectAndGetContract() {
     );
     
     log('[Blockchain] ✅ Contrato inicializado');
-    log('[Blockchain] ========== LISTO PARA TRANSACCION ==========');
+    log('[Blockchain] Dirección: ' + CONFIG.blockchain.contractAddress);
     
     return contract;
     
   } catch (error) {
-    log('[Blockchain] ❌ Error: ' + error.message, 'error');
+    log('[Blockchain] ❌ Error conectando: ' + error.message, 'error');
     if (error.stack) {
       console.error('[Blockchain] Stack:', error.stack);
     }
@@ -169,7 +197,7 @@ async function connectAndGetContract() {
 }
 
 /**
- * Guarda datos en blockchain
+ * Guarda datos en blockchain - AUTOMATICO
  */
 export async function savePlantData(plantId, data) {
   try {
@@ -179,21 +207,22 @@ export async function savePlantData(plantId, data) {
     const contract = await connectAndGetContract();
     const json = JSON.stringify(data);
     
-    log('[Blockchain] Datos JSON: ' + json.substring(0, 100) + '...');
-    log('[Blockchain] Enviando transacción a Sepolia...');
+    log('[Blockchain] Datos: ' + json.substring(0, 100) + '...');
+    log('[Blockchain] 📤 Enviando transacción a SEPOLIA...');
     
+    // Magic.link FIRMA Y ENVIA AUTOMATICAMENTE
     const tx = await contract.setPlantData(plantId, json);
     
-    log('[Blockchain] ✅ Transacción enviada');
-    log('[Blockchain] Hash: ' + tx.hash);
-    log('[Blockchain] Etherscan: https://sepolia.etherscan.io/tx/' + tx.hash);
+    log('[Blockchain] ✅ Transacción enviada AUTOMATICAMENTE');
+    log('[Blockchain] 🔗 Hash: ' + tx.hash);
+    log('[Blockchain] 🔍 Etherscan: https://sepolia.etherscan.io/tx/' + tx.hash);
     
-    log('[Blockchain] Esperando confirmación (puede tardar 10-30 segundos)...');
+    log('[Blockchain] ⏳ Esperando confirmación (10-30 seg)...');
     const receipt = await tx.wait();
     
-    log('[Blockchain] ✅ Confirmada en bloque: ' + receipt.blockNumber);
-    log('[Blockchain] Gas usado: ' + receipt.gasUsed.toString());
-    log('[Blockchain] ========== TRANSACCION EXITOSA ==========');
+    log('[Blockchain] ✅ CONFIRMADA en bloque: ' + receipt.blockNumber);
+    log('[Blockchain] ⛽ Gas usado: ' + receipt.gasUsed.toString());
+    log('[Blockchain] ========== ✅ GUARDADO EN BLOCKCHAIN ==========');
     
     return receipt;
     
@@ -214,12 +243,12 @@ export async function loadPlantData(plantIndex) {
     const plantId = getPlantIdFromURL();
     const url = './data/' + encodeURIComponent(plantId) + '.json';
     
-    log('Cargando datos de: ' + url);
+    log('📂 Cargando datos de: ' + url);
     
     const response = await fetch(url, { cache: 'no-store' });
     
     if (!response.ok) {
-      log('Datos no encontrados, usando fallback', 'warn');
+      log('⚠️  Datos no encontrados, usando fallback', 'warn');
       return FALLBACK_DATA;
     }
     
@@ -239,32 +268,23 @@ export async function loadPlantData(plantIndex) {
   }
 }
 
-/**
- * Obtiene datos cacheados
- */
 export function getCachedPlantData(plantIndex) {
   return plantDataCache.get(plantIndex);
 }
 
-/**
- * Limpia cache
- */
 export function clearPlantCache(plantIndex) {
   plantDataCache.delete(plantIndex);
-  log('Cache limpiado para planta ' + plantIndex);
+  log('🗑️  Cache limpiado para planta ' + plantIndex);
 }
 
-/**
- * Pre-carga datos
- */
 export async function preloadPlantData(count = 3) {
-  log('Pre-cargando datos de ' + count + ' plantas...');
+  log('📥 Pre-cargando ' + count + ' plantas...');
   
   const promises = [];
   for (let i = 0; i < count; i++) {
     promises.push(
       loadPlantData(i).catch(err => {
-        log('Error pre-cargando planta ' + i + ': ' + err.message, 'warn');
+        log('⚠️  Error pre-cargando planta ' + i + ': ' + err.message, 'warn');
       })
     );
   }
