@@ -1,11 +1,14 @@
 ﻿// ============================================
-// GESTOR DE DATOS Y CACHÃ‰
+// DATA MANAGER - BLOCKCHAIN + METAMASK
 // ============================================
 
 import { CONFIG, getPlantIdFromURL, STATE } from './config.js';
 import { log } from './utils.js';
 
-// Datos de fallback cuando no se puede cargar
+// Cache de datos
+const plantDataCache = new Map();
+
+// Datos de fallback
 const FALLBACK_DATA = {
   eventType: "MONITOR",
   eventId: "01FALLBACK000000000000000",
@@ -15,7 +18,7 @@ const FALLBACK_DATA = {
   recordedBy: "device-DEMO",
   fieldId: "DEMO-FIELD",
   seed_LotId: "DEMO-SEED-001",
-  seedVariety: "Demo Plant (No Data)",
+  seedVariety: "Demo Plant (Sin datos)",
   seedSupplier: "Demo Supplier",
   seedTreatment: "demo",
   quantity_kg: 0.0,
@@ -25,445 +28,276 @@ const FALLBACK_DATA = {
   germinationRate_pct: 0
 };
 
-// CachÃ© de datos de plantas
-const plantDataCache = new Map();
-
 /**
- * â­ NUEVA: Inicializar conexiÃ³n a blockchain
+ * Carga el MetaMask SDK desde CDN
+ * SOLO opciones v11+ validas
  */
-async function initBlockchain() {
-  if (STATE.blockchainConnected) {
-    return true; // Ya conectado
-  }
-
-  try {
-    log('Inicializando conexiÃ³n a blockchain...');
-
-    // Verificar que ethers estÃ© disponible
-    if (typeof window.ethers === 'undefined') {
-      throw new Error('Ethers.js no estÃ¡ cargado');
+async function loadMetaMaskSDK() {
+  log('[MetaMask SDK] Iniciando carga desde CDN...');
+  
+  return new Promise((resolve, reject) => {
+    // Ya está cargado?
+    if (typeof window.MetaMaskSDK === 'function') {
+      log('[MetaMask SDK] Detectado en window.MetaMaskSDK');
+      return resolve(window.MetaMaskSDK);
     }
 
-    // Crear provider (solo lectura, no necesita MetaMask)
-    const provider = new ethers.providers.JsonRpcProvider(
-      CONFIG.blockchain.network.rpcUrl
-    );
+    // Crear script para CDN
+    const script = document.createElement('script');
+    script.src = 'https://cdn.jsdelivr.net/npm/@metamask/sdk@latest/dist/metamask-sdk.js';
+    script.async = true;
+    
+    script.onload = () => {
+      log('[MetaMask SDK] Script cargado del CDN');
+      
+      // Esperar a que window.MetaMaskSDK se defina
+      let attempts = 0;
+      const checkInterval = setInterval(() => {
+        attempts++;
+        
+        if (typeof window.MetaMaskSDK === 'function') {
+          clearInterval(checkInterval);
+          log('[MetaMask SDK] Detectado en window.MetaMaskSDK');
+          resolve(window.MetaMaskSDK);
+        } else if (attempts > 50) {
+          clearInterval(checkInterval);
+          reject(new Error('[MetaMask SDK] No se pudo cargar window.MetaMaskSDK'));
+        }
+      }, 100);
+    };
+    
+    script.onerror = () => {
+      log('[MetaMask SDK] Error cargando CDN', 'error');
+      reject(new Error('[MetaMask SDK] Error cargando de CDN'));
+    };
+    
+    document.head.appendChild(script);
+  });
+}
 
-    // Crear instancia del contrato
+/**
+ * Inicializa MetaMask y obtiene el signer
+ * SOLO opciones v11+ validas
+ */
+async function initializeMetaMask() {
+  try {
+    log('[Blockchain] Obteniendo SDK...');
+    
+    const MetaMaskSDK = await loadMetaMaskSDK();
+    log('[MetaMask SDK] Constructor obtenido');
+    
+    // SOLO opciones validas v11+
+    const options = {
+      dappMetadata: {
+        name: 'AgriBlockchain',
+        url: typeof window !== 'undefined' ? window.location.origin : ''
+      },
+      useDeeplink: true,
+      checkInstallationImmediately: false
+    };
+    
+    log('[MetaMask SDK] Inicializando con opciones');
+    
+    const mmsdk = new MetaMaskSDK(options);
+    
+    log('[MetaMask SDK] Instancia creada');
+    log('[MetaMask SDK] Obteniendo provider...');
+    
+    const provider = mmsdk.getProvider();
+    
+    if (!provider) {
+      throw new Error('No se pudo obtener provider de MetaMask SDK');
+    }
+    
+    log('[MetaMask SDK] Provider obtenido');
+    
+    return provider;
+    
+  } catch (error) {
+    log('[Blockchain] Error inicializando MetaMask: ' + error.message, 'error');
+    throw error;
+  }
+}
+
+/**
+ * Conecta a MetaMask y retorna el contrato
+ */
+async function connectAndGetContract() {
+  try {
+    log('[Blockchain] Conectando a MetaMask...');
+    
+    const provider = await initializeMetaMask();
+    
+    // Solicitar cuentas
+    log('[Blockchain] Solicitando cuentas...');
+    const accounts = await provider.request({ 
+      method: 'eth_requestAccounts' 
+    });
+    
+    log('[Blockchain] Conectado a cuenta: ' + accounts[0]);
+    
+    // Crear Web3 provider con ethers
+    const ethersProvider = new ethers.providers.Web3Provider(provider, 'any');
+    const signer = ethersProvider.getSigner();
+    
+    log('[Blockchain] Signer obtenido');
+    
+    // Verificar red
+    const network = await ethersProvider.getNetwork();
+    log('[Blockchain] Red actual: ' + network.chainId);
+    
+    // Si no es Sepolia (11155111), cambiar
+    if (network.chainId !== 11155111) {
+      log('[Blockchain] Cambiando a Sepolia...');
+      
+      try {
+        await provider.request({
+          method: 'wallet_switchEthereumChain',
+          params: [{ chainId: '0xaa36a7' }]
+        });
+        log('[Blockchain] Red cambiada a Sepolia');
+      } catch (switchError) {
+        if (switchError.code === 4902) {
+          log('[Blockchain] Agregando Sepolia...');
+          await provider.request({
+            method: 'wallet_addEthereumChain',
+            params: [{
+              chainId: '0xaa36a7',
+              chainName: 'Sepolia',
+              nativeCurrency: { name: 'ETH', symbol: 'ETH', decimals: 18 },
+              rpcUrls: ['https://sepolia.infura.io/v3/YOUR_INFURA_KEY'],
+              blockExplorerUrls: ['https://sepolia.etherscan.io']
+            }]
+          });
+          log('[Blockchain] Sepolia agregada');
+        } else {
+          throw switchError;
+        }
+      }
+    }
+    
+    // Crear contrato
     const contract = new ethers.Contract(
       CONFIG.blockchain.contractAddress,
       CONFIG.blockchain.contractABI,
-      provider
+      signer
     );
-
-    // Guardar en estado global
-    STATE.blockchainProvider = provider;
-    STATE.blockchainContract = contract;
-    STATE.blockchainConnected = true;
-
-    log('âœ… Blockchain conectado a Sepolia');
-    return true;
-
-  } catch (err) {
-    log(`Error conectando a blockchain: ${err.message}`, 'error');
-    STATE.blockchainConnected = false;
-    return false;
+    
+    log('[Blockchain] Contrato inicializado');
+    
+    return contract;
+    
+  } catch (error) {
+    log('[Blockchain] Error conectando: ' + error.message, 'error');
+    if (error.stack) {
+      console.error('[Blockchain] Stack:', error.stack);
+    }
+    throw error;
   }
 }
 
 /**
- * â­ NUEVA: Cargar datos desde blockchain
+ * Guarda datos en blockchain
  */
-async function loadFromBlockchain(plantId) {
+export async function savePlantData(plantId, data) {
   try {
-    // Asegurar que blockchain estÃ¡ conectado
-    const connected = await initBlockchain();
-    if (!connected) {
-      throw new Error('No se pudo conectar a blockchain');
+    log('[Blockchain] Guardando para plantId: ' + plantId);
+    
+    const contract = await connectAndGetContract();
+    const json = JSON.stringify(data);
+    
+    log('[Blockchain] Datos: ' + json.substring(0, 100) + '...');
+    log('[Blockchain] Enviando transaccion...');
+    
+    const tx = await contract.setPlantData(plantId, json);
+    
+    log('[Blockchain] Tx enviada - Hash: ' + tx.hash);
+    log('[Blockchain] Etherscan: https://sepolia.etherscan.io/tx/' + tx.hash);
+    
+    log('[Blockchain] Esperando confirmacion...');
+    const receipt = await tx.wait();
+    
+    log('[Blockchain] Confirmada en bloque ' + receipt.blockNumber);
+    log('[Blockchain] Gas usado: ' + receipt.gasUsed.toString());
+    
+    return receipt;
+    
+  } catch (error) {
+    log('[Blockchain] Error guardando: ' + error.message, 'error');
+    if (error.stack) {
+      console.error('[Blockchain] Stack:', error.stack);
     }
-
-    log(`ðŸ“– Leyendo datos de blockchain para: ${plantId}`);
-
-    // Verificar si la planta existe
-    const exists = await STATE.blockchainContract.plantExists(plantId);
-    
-    if (!exists) {
-      log(`âš ï¸ Planta ${plantId} no encontrada en blockchain`, 'warn');
-      throw new Error('Planta no encontrada en blockchain');
-    }
-
-    // Leer datos de la planta
-    const jsonData = await STATE.blockchainContract.getPlantData(plantId);
-    
-    // Parsear JSON
-    const data = JSON.parse(jsonData);
-    
-    log(`âœ… Datos de blockchain leÃ­dos: ${data.seedVariety}`);
-    
-    return data;
-
-  } catch (err) {
-    log(`Error leyendo blockchain: ${err.message}`, 'error');
-    throw err;
+    throw error;
   }
 }
 
 /**
- * â­ MODIFICADA: Cargar datos desde JSON local
+ * Carga datos de una planta
  */
-async function loadFromLocalJSON(plantId) {
-  const url = `./data/${encodeURIComponent(plantId)}.json`;
-  
+export async function loadPlantData(plantIndex) {
   try {
-    log(`ðŸ“– Cargando datos locales desde ${url}`);
+    const plantId = getPlantIdFromURL();
+    const url = './data/' + encodeURIComponent(plantId) + '.json';
+    
+    log('Cargando datos de: ' + url);
+    
     const response = await fetch(url, { cache: 'no-store' });
     
     if (!response.ok) {
-      throw new Error(`HTTP ${response.status}`);
+      log('Datos no encontrados, usando fallback', 'warn');
+      return FALLBACK_DATA;
     }
     
     const data = await response.json();
-    log(`âœ… Datos locales cargados: ${data.seedVariety}`);
-    return data;
+    log('Datos cargados: ' + data.seedVariety);
     
-  } catch (err) {
-    log(`Error cargando JSON local: ${err.message}`, 'warn');
-    throw err;
-  }
-}
-
-/**
- * â­ MODIFICADA: Carga los datos de una planta (con cachÃ©)
- * Ahora soporta BLOCKCHAIN o LOCAL_JSON segÃºn configuraciÃ³n
- */
-export async function loadPlantData(plantIndex) {
-  // Forzar solo plantIndex = 0
-  if (plantIndex !== 0) {
-    console.warn(`Intentando cargar planta ${plantIndex}, forzando a 0`);
-    plantIndex = 0;
-  }
-  
-  const now = Date.now();
-  const cached = plantDataCache.get(plantIndex);
-
-  // Si hay cache y es reciente (menos de 5 segundos), usar cache
-  if (cached && (now - cached.lastUpdate) < CONFIG.dataUpdateInterval) {
-    log(`Usando datos en cachÃ© para planta ${plantIndex}`);
-    return cached.data;
-  }
-
-  // Determinar el ID del archivo/blockchain
-  const plantId = getPlantIdFromURL();
-  
-  try {
-    let data;
-
-    // â­ SELECCIONAR FUENTE DE DATOS
-    if (CONFIG.blockchain.mode === 'BLOCKCHAIN') {
-      log(`ðŸ”— Modo BLOCKCHAIN activado para ${plantId}`);
-      data = await loadFromBlockchain(plantId);
-    } else {
-      log(`ðŸ“ Modo LOCAL_JSON activado para ${plantId}`);
-      data = await loadFromLocalJSON(plantId);
-    }
-    
-    // Guardar en cache
     plantDataCache.set(plantIndex, {
       data: data,
-      lastUpdate: now,
-      previousData: cached ? cached.data : null
+      lastUpdate: Date.now()
     });
     
-    log(`âœ… Datos cargados para planta ${plantIndex}: ${data.seedVariety}`);
     return data;
     
-  } catch (err) {
-    log(`âŒ Error cargando datos: ${err.message}`, 'error');
-    
-    // Intentar usar cache antiguo si existe
-    if (cached) {
-      log(`âš ï¸ Usando cache antiguo como fallback`);
-      return cached.data;
-    }
-    
-    // Si no hay cache, usar fallback
-    const fallback = {
-      ...FALLBACK_DATA,
-      seedVariety: `Planta ${plantIndex + 1} (Sin datos)`
-    };
-    
-    plantDataCache.set(plantIndex, {
-      data: fallback,
-      lastUpdate: now,
-      previousData: null
-    });
-    
-    return fallback;
+  } catch (error) {
+    log('Error cargando datos: ' + error.message, 'warn');
+    return FALLBACK_DATA;
   }
 }
 
 /**
- * Obtiene los datos cacheados de una planta
+ * Obtiene datos cacheados
  */
 export function getCachedPlantData(plantIndex) {
   return plantDataCache.get(plantIndex);
 }
 
 /**
- * Limpia el cachÃ© de una planta especÃ­fica
+ * Limpia cache
  */
 export function clearPlantCache(plantIndex) {
   plantDataCache.delete(plantIndex);
-  log(`CachÃ© limpiado para planta ${plantIndex}`);
+  log('Cache limpiado para planta ' + plantIndex);
 }
 
 /**
- * Limpia todo el cachÃ©
- */
-export function clearAllCache() {
-  plantDataCache.clear();
-  log('CachÃ© completo limpiado');
-}
-
-/**
- * Pre-carga los datos de las plantas mÃ¡s comunes
+ * Pre-carga datos
  */
 export async function preloadPlantData(count = 3) {
-  log(`Pre-cargando datos de ${count} plantas...`);
-  const promises = [];
+  log('Pre-cargando datos de ' + count + ' plantas...');
   
+  const promises = [];
   for (let i = 0; i < count; i++) {
-    promises.push(loadPlantData(i).catch(err => {
-      log(`Error pre-cargando planta ${i}: ${err.message}`, 'warn');
-    }));
+    promises.push(
+      loadPlantData(i).catch(err => {
+        log('Error pre-cargando planta ' + i + ': ' + err.message, 'warn');
+      })
+    );
   }
   
   try {
     await Promise.all(promises);
-    log(`âœ… Pre-carga completa`);
-  } catch (err) {
-    log(`Error en pre-carga: ${err.message}`, 'warn');
-  }
-}
-
-/**
- * NUEVA: Inicializa contrato con signer (MetaMask) para ESCRITURA
- */
-async function getSignerContract() {
-  if (typeof window === 'undefined') {
-    throw new Error('Entorno sin ventana');
-  }
-  if (!window.ethereum) {
-    throw new Error('MetaMask no estÃ¡ disponible');
-  }
-
-  // Solicitar cuentas
-  await window.ethereum.request({ method: 'eth_requestAccounts' });
-
-  const web3Provider = new ethers.providers.Web3Provider(window.ethereum);
-  const network = await web3Provider.getNetwork();
-
-  // Cambiar de red si es necesario
-  if (network.chainId !== CONFIG.blockchain.network.chainId) {
-    try {
-      await window.ethereum.request({
-        method: 'wallet_switchEthereumChain',
-        params: [{ chainId: CONFIG.blockchain.network.chainIdHex }]
-      });
-    } catch (switchErr) {
-      // Si la red no estÃ¡ agregada (cÃ³digo 4902), intentar agregarla
-      if (switchErr && (switchErr.code === 4902 || switchErr.message?.includes('Unrecognized chain'))) {
-        try {
-          await window.ethereum.request({
-            method: 'wallet_addEthereumChain',
-            params: [{
-              chainId: CONFIG.blockchain.network.chainIdHex,
-              chainName: CONFIG.blockchain.network.name,
-              nativeCurrency: { name: 'Sepolia ETH', symbol: 'SEP', decimals: 18 },
-              rpcUrls: [CONFIG.blockchain.network.rpcUrl],
-              blockExplorerUrls: ['https://sepolia.etherscan.io']
-            }]
-          });
-        } catch (addErr) {
-          throw new Error('Agrega la red Sepolia en MetaMask e intÃ©ntalo de nuevo');
-        }
-      } else {
-        throw new Error('Conecta MetaMask a Sepolia e intÃ©ntalo de nuevo');
-      }
-    }
-  }
-
-  const signer = web3Provider.getSigner();
-  const contract = new ethers.Contract(
-    CONFIG.blockchain.contractAddress,
-    CONFIG.blockchain.contractABI,
-    signer
-  );
-  return contract;
-}
-
-/**
- * ✅ SOLO UMD LOCAL: Carga del MetaMask SDK desde archivo vendorizado en index.html
- * NO inyección dinámica, NO opciones 1.x (communicationLayerPreference, etc.)
- */
-async function __loadMetaMaskSDK() {
-  // El SDK DEBE estar incluido en index.html como UMD local
-  if (typeof window.MetaMaskSDK === 'function') {
-    log('[MetaMask SDK] ✓ Detectado en window.MetaMaskSDK (UMD local)');
-    return { default: window.MetaMaskSDK };
-  }
-  throw new Error(
-    '[MetaMask SDK] ❌ No encontrado. Verifica que index.html carga: <script src="./assets/metamask-sdk.iife.js"></script>'
-  );
-}
-
-/**
- * ✅ SIMPLIFICADO: Solo deeplink, sin opciones obsoletas de v1.x
- * ❌ ELIMINADAS: communicationLayerPreference, shouldShimWeb3, injectProvider, enableAnalytics, forceDeleteProvider
- */
-async function getSignerContractSDK() {
-  try {
-    if (typeof window === 'undefined') {
-      throw new Error('Entorno sin ventana');
-    }
-
-    log('[Blockchain] Inicializando MetaMask...');
-
-    let ethProvider = null;
-
-    // ✅ INTENTO 1: Usar window.ethereum si ya está inyectado (extensión/app)
-    if (window.ethereum) {
-      log('[MetaMask] ✓ Provider ya inyectado (extensión o app)');
-      ethProvider = window.ethereum;
-    } else {
-      // ✅ INTENTO 2: Cargar SDK para deeplink en móvil
-      log('[MetaMask] No hay provider inyectado, cargando SDK UMD local...');
-      
-      const SDKMod = await __loadMetaMaskSDK();
-      const SDKCtor = SDKMod.default || SDKMod;
-
-      log('[MetaMask SDK] Inicializando con opciones v11+ (deeplink, sin modal)...');
-      
-      // ✅ SOLO opciones válidas actuales (NO 1.x)
-      const MMSDK = new SDKCtor({
-        dappMetadata: {
-          name: 'AgriBlockchain',
-          url: location.origin
-        },
-        useDeeplink: true, // 🎯 Abre app en móvil, NO modal
-        checkInstallationImmediately: false // 🎯 Evita modal de instalación
-      });
-
-      log('[MetaMask SDK] Obteniendo provider...');
-      ethProvider = MMSDK.getProvider();
-      
-      if (!ethProvider) {
-        throw new Error('[MetaMask SDK] getProvider() retornó null');
-      }
-      
-      log('[MetaMask SDK] ✓ Provider obtenido');
-    }
-
-    // ✅ Solicitar acceso a cuentas
-    log('[MetaMask] Solicitando cuentas...');
-    await ethProvider.request({ method: 'eth_requestAccounts' });
-    log('[MetaMask] ✓ Cuentas autorizadas');
-
-    // ✅ Crear provider de ethers.js
-    const web3Provider = new ethers.providers.Web3Provider(ethProvider, 'any');
-    const signer = web3Provider.getSigner();
-    const network = await web3Provider.getNetwork();
-
-    log(`[Blockchain] Chain actual: ${network.chainId}`);
-
-    // ✅ Si no es Sepolia (11155111), cambiar
-    if (network.chainId !== CONFIG.blockchain.network.chainId) {
-      log('[Blockchain] Cambiando a Sepolia...');
-      
-      try {
-        await ethProvider.request({
-          method: 'wallet_switchEthereumChain',
-          params: [{ chainId: CONFIG.blockchain.network.chainIdHex }]
-        });
-        log('[Blockchain] ✓ Chain cambiado a Sepolia');
-      } catch (switchErr) {
-        // Si la red no existe (4902), intentar agregarla
-        if (switchErr?.code === 4902 || switchErr?.message?.includes('Unrecognized chain')) {
-          log('[Blockchain] Red Sepolia no agregada, intentando...');
-          
-          try {
-            await ethProvider.request({
-              method: 'wallet_addEthereumChain',
-              params: [{
-                chainId: CONFIG.blockchain.network.chainIdHex,
-                chainName: CONFIG.blockchain.network.name,
-                nativeCurrency: { name: 'Sepolia ETH', symbol: 'SEP', decimals: 18 },
-                rpcUrls: [CONFIG.blockchain.network.rpcUrl],
-                blockExplorerUrls: ['https://sepolia.etherscan.io']
-              }]
-            });
-            log('[Blockchain] ✓ Red Sepolia agregada');
-          } catch (addErr) {
-            throw new Error('[Blockchain] Agrega Sepolia manualmente en MetaMask');
-          }
-        } else {
-          throw new Error('[Blockchain] Conecta MetaMask a Sepolia');
-        }
-      }
-    }
-
-    // ✅ Crear instancia del contrato
-    const contract = new ethers.Contract(
-      CONFIG.blockchain.contractAddress,
-      CONFIG.blockchain.contractABI,
-      signer
-    );
-
-    log('[Blockchain] ✓ Contrato inicializado');
-    return contract;
-
-  } catch (err) {
-    log(`[Blockchain] ❌ Error: ${err.message}`, 'error');
-    if (err.stack) {
-      console.error('[Blockchain] Stack:', err.stack);
-    }
-    throw err;
-  }
-}
-
-/**
- * NUEVA: Guarda datos de una planta en blockchain (setPlantData)
- */
-export async function savePlantData(plantId, data) {
-  try {
-    log('[Blockchain] Iniciando guardado para plantId: ' + plantId);
-
-    const contract = await getSignerContractSDK();
-    const json = JSON.stringify(data);
-
-    log('[Blockchain] Enviando setPlantData(' + plantId + ')...');
-    log('[Blockchain] Datos: ' + json.substring(0, 100) + '...');
-
-    const tx = await contract.setPlantData(plantId, json);
-    const txHash = tx.hash;
-    log('[Blockchain] Tx enviada - Hash: ' + txHash);
-    log('[Blockchain] Ver en Etherscan: https://sepolia.etherscan.io/tx/' + txHash);
-
-    log('[Blockchain] Esperando confirmacion...');
-    const receipt = await tx.wait();
-    log('[Blockchain] Tx confirmada en bloque ' + receipt.blockNumber);
-    log('[Blockchain] Gas usado: ' + receipt.gasUsed.toString());
-
-    // Limpiar cache para forzar recarga fresca
-    try { clearPlantCache(0); } catch {}
-
-    return receipt;
-
-  } catch (err) {
-    log('[Blockchain] Error guardando: ' + err.message, 'error');
-    if (err.stack) {
-      console.error('[Blockchain] Stack trace:', err.stack);
-    }
-    throw err;
+    log('Pre-carga completa');
+  } catch (error) {
+    log('Error en pre-carga: ' + error.message, 'warn');
   }
 }

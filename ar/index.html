@@ -6,58 +6,46 @@
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  
-  <!-- PWA Fullscreen -->
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-fullscreen">
   <meta name="format-detection" content="telephone=no">
   
-  <title>AR Planta - Detección IA + Blockchain</title>
+  <title>AR Planta - Deteccion IA + Blockchain</title>
   
-  <!-- PWA -->
   <link rel="manifest" href="./manifest.json">
   <meta name="theme-color" content="#02eef0">
   <link rel="apple-touch-icon" href="./assets/plant.png">
   
-  <!-- Estilos -->
   <link rel="stylesheet" href="./css/styles.css">
   
-  <!-- ⭐ Ethers.js para blockchain -->
+  <!-- Ethers.js para blockchain -->
   <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
-  
   
   <!-- TensorFlow.js y COCO-SSD -->
   <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.11.0"></script>
   <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs-backend-wasm@4.11.0/dist/tf-backend-wasm.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd@2.2.3"></script>
   <script>
-    // Configure TFJS WASM paths early (for mobile fallback)
     if (window.tf && tf.wasm && tf.wasm.setWasmPaths) {
       tf.wasm.setWasmPaths('https://cdn.jsdelivr.net/npm/@tensorflow/tfjs-backend-wasm@4.11.0/dist/');
     }
   </script>
   
-  <!-- Auto-fullscreen script -->
   <script>
-    // Intentar entrar en fullscreen al hacer clic/touch en la página
     function enterFullscreen() {
       const isMetaMask = /MetaMaskMobile/i.test(navigator.userAgent);
       if (isMetaMask) return;
       const elem = document.documentElement;
       if (elem.requestFullscreen) {
         elem.requestFullscreen().catch(err => console.log('Fullscreen error:', err));
-      } else if (elem.webkitRequestFullscreen) { /* Safari */
+      } else if (elem.webkitRequestFullscreen) {
         elem.webkitRequestFullscreen();
-      } else if (elem.msRequestFullscreen) { /* IE11 */
+      } else if (elem.msRequestFullscreen) {
         elem.msRequestFullscreen();
       }
-      // Remover el listener después de entrar
       document.removeEventListener('click', enterFullscreen);
       document.removeEventListener('touchstart', enterFullscreen);
     }
     
-    // Esperar a que el DOM esté listo
     document.addEventListener('DOMContentLoaded', () => {
-      // Intentar entrar en fullscreen con el primer toque/clic
       document.addEventListener('click', enterFullscreen, { once: true });
       document.addEventListener('touchstart', enterFullscreen, { once: true });
     });
@@ -65,57 +53,44 @@
 </head>
 <body>
 
-  <!-- Header (transparente, esquina superior izquierda) -->
   <div class="header">
     <div class="header-info">
-      <h1>🌱 AR Planta IA</h1>
+      <h1>Plant AR IA</h1>
       <div class="status" id="status">Inicializando...</div>
     </div>
     <div class="controls">
-      <!-- ⭐ NUEVOS: Botones de zoom -->
-      <button class="btn-control btn-zoom" id="btnZoomOut" title="Zoom menos (−)">🔍−</button>
-      <button class="btn-control btn-zoom" id="btnZoomIn" title="Zoom más (+)">🔍+</button>
-      <button class="btn-control btn-zoom" id="btnZoomReset" title="Reset zoom">↺</button>
-      <!-- Backend TFJS -->
+      <button class="btn-control btn-zoom" id="btnZoomOut" title="Zoom menos">-</button>
+      <button class="btn-control btn-zoom" id="btnZoomIn" title="Zoom mas">+</button>
+      <button class="btn-control btn-zoom" id="btnZoomReset" title="Reset zoom">Reset</button>
       <button class="btn-control" id="btnWasmToggle" title="Backend TFJS">TF</button>
-      
-      <!-- Guardar en blockchain -->
       <button class="btn-control" id="btnSaveChain" title="Guardar en blockchain">BC</button>
-      <!-- Botones originales -->
-      <button class="btn-control" id="btnTheme" title="Cambiar tema">🌓</button>
+      <button class="btn-control" id="btnTheme" title="Cambiar tema">Theme</button>
     </div>
   </div>
 
-  <!-- Contenedor principal -->
   <div id="container">
     <video id="camera" autoplay playsinline></video>
     <canvas id="canvas"></canvas>
   </div>
 
-  <!-- Alertas -->
   <div class="alert-banner" id="alertBanner"></div>
 
-  <!-- Loading -->
   <div class="loading" id="loading">
     <div class="spinner"></div>
-    🤖 Cargando modelo de IA...<br>
+    Cargando modelo de IA...
     <small style="color: var(--muted); margin-top: 8px; display: block;">Esto puede tardar unos segundos</small>
   </div>
 
-  <!-- Instrucciones (transparente, centro inferior) -->
   <div class="instructions" id="instructions">
-    📷 Apunta la cámara a plantas, árboles o arbustos
+    Apunta la camara a plantas
   </div>
 
-  <!-- ⭐ NUEVO: Indicador de zoom (opcional, esquina inferior izquierda) -->
   <div class="zoom-indicator" id="zoomIndicator">
-    🔍 Zoom: 1.0x
+    Zoom: 1.0x
   </div>
 
-  <!-- Botón pantalla completa (transparente) -->
-  <button class="btn-fullscreen" id="btnFullscreen" title="Pantalla completa">⛶</button>
+  <button class="btn-fullscreen" id="btnFullscreen" title="Pantalla completa">Fullscreen</button>
 
-  <!-- Modal Guardar en Blockchain -->
   <div class="modal-overlay hidden" id="saveModal">
     <div class="modal">
       <h2 style="margin-bottom:12px">Guardar en blockchain</h2>
@@ -137,7 +112,6 @@
             <span>lotCode (auto)</span>
             <input type="text" id="f_lotCode" readonly>
           </label>
-
           <label>
             <span>eventType</span>
             <input type="text" id="f_eventType" placeholder="PLANTING / SEEDING / ...">
@@ -196,30 +170,9 @@
     </div>
   </div>
 
-  <!-- ✅ CARGA ÚNICA DEL SDK METAMASK LOCAL (UMD/IIFE)
-       NO cambiar esta línea ni agregar otra carga del SDK
-       Si hay errores, verifica que ./assets/metamask-sdk.iife.js existe -->
-  <script src="./assets/metamask-sdk.iife.js"></script>
+  <!-- IMPORTANTE: NO cargar SDK aqui - se carga desde dataManager.js -->
 
-  <!-- Scripts modulares -->
   <script type="module" src="./js/app.js"></script>
-<script type="module">
-  import { CONFIG } from './js/config.js';
-  document.addEventListener('DOMContentLoaded', () => {
-    const btn = document.getElementById('btnWasmToggle');
-    if (!btn) return;
-    const saved = localStorage.getItem('forceWasmOnMobile');
-    if (saved === 'true' || saved === 'false') {
-      CONFIG.model.forceWasmOnMobile = (saved === 'true');
-    }
-    const update = () => {
-      btn.textContent = CONFIG.model.forceWasmOnMobile ? 'WASM' : 'AUTO';
-      btn.title = CONFIG.model.forceWasmOnMobile ? 'Backend: WASM forzado' : 'Backend: auto';
-    };
-    update();
-    btn.addEventListener('click', async () => {});
-  });
-</script>
 
 </body>
 </html>
