@@ -1,36 +1,34 @@
-// ============================================
-// GESTOR DE CÁMARA CON ZOOM
+﻿// ============================================
+// GESTOR DE CÃMARA CON ZOOM
 // ============================================
 
 import { CONFIG, STATE } from './config.js';
 import { log } from './utils.js';
 
 /**
- * Inicia el stream de la cámara CON SOPORTE DE ZOOM
+ * Inicia el stream de la cÃ¡mara CON SOPORTE DE ZOOM
  * @param {HTMLVideoElement} videoElement - Elemento video donde mostrar el stream
  * @param {HTMLCanvasElement} canvasElement - Canvas para sincronizar dimensiones
  * @returns {Promise<void>}
  */
 export async function startCamera(videoElement, canvasElement) {
   try {
-    log('Solicitando acceso a la cámara...');
+    log('Solicitando acceso a la cÃ¡mara...');
     
-    // ⭐ NUEVO: Configuración avanzada con zoom
+    // â­ NUEVO: ConfiguraciÃ³n avanzada con zoom
     const constraints = {
       video: {
-        facingMode: CONFIG.camera.facingMode,
+        facingMode: { ideal: CONFIG.camera.facingMode || 'environment' },
         width: { ideal: CONFIG.camera.idealWidth },
         height: { ideal: CONFIG.camera.idealHeight },
-        // ⭐ Soporte para zoom
-        zoom: { ideal: CONFIG.camera.zoomLevel || 1 }
-      },
+        // â­ Soporte para zoom},
       audio: false
     };
 
     const stream = await navigator.mediaDevices.getUserMedia(constraints);
     videoElement.srcObject = stream;
     
-    // Esperar a que el video esté listo
+    // Esperar a que el video estÃ© listo
     await new Promise(resolve => {
       videoElement.onloadedmetadata = () => {
         videoElement.play();
@@ -42,9 +40,9 @@ export async function startCamera(videoElement, canvasElement) {
     canvasElement.width = videoElement.videoWidth;
     canvasElement.height = videoElement.videoHeight;
 
-    log(`✓ Cámara iniciada: ${videoElement.videoWidth}x${videoElement.videoHeight}`);
+    log(`âœ“ CÃ¡mara iniciada: ${videoElement.videoWidth}x${videoElement.videoHeight}`);
     
-    // ⭐ NUEVO: Detectar capacidades de zoom
+    // â­ NUEVO: Detectar capacidades de zoom
     const settings = stream.getVideoTracks()[0].getSettings();
     STATE.cameraZoomCapabilities = {
       currentZoom: settings.zoom || 1,
@@ -52,9 +50,9 @@ export async function startCamera(videoElement, canvasElement) {
     };
     
     if (STATE.cameraZoomCapabilities.supported) {
-      log('✓ Zoom de cámara soportado');
+      log('âœ“ Zoom de cÃ¡mara soportado');
     } else {
-      log('⚠️ Zoom de cámara NO soportado en este dispositivo');
+      log('âš ï¸ Zoom de cÃ¡mara NO soportado en este dispositivo');
     }
     
     // Guardar referencias en el estado
@@ -64,12 +62,12 @@ export async function startCamera(videoElement, canvasElement) {
     STATE.stream = stream;
     
   } catch (err) {
-    log(`Error al acceder a la cámara: ${err.message}`, 'error');
+    log(`Error al acceder a la cÃ¡mara: ${err.message}`, 'error');
     
     // Actualizar UI con el error
     const status = document.getElementById('status');
     if (status) {
-      status.textContent = '⚠️ Error: No se pudo acceder a la cámara';
+      status.textContent = 'âš ï¸ Error: No se pudo acceder a la cÃ¡mara';
       status.classList.remove('detecting');
     }
     
@@ -78,7 +76,7 @@ export async function startCamera(videoElement, canvasElement) {
 }
 
 /**
- * ⭐ NUEVA: Aumentar zoom de la cámara
+ * â­ NUEVA: Aumentar zoom de la cÃ¡mara
  * @param {number} step - Cantidad a aumentar (ej: 0.1)
  */
 export async function increaseZoom(step = 0.1) {
@@ -89,7 +87,7 @@ export async function increaseZoom(step = 0.1) {
     const capabilities = track.getCapabilities();
     
     if (!capabilities.zoom) {
-      log('⚠️ Zoom no soportado en este dispositivo', 'warn');
+      log('âš ï¸ Zoom no soportado en este dispositivo', 'warn');
       return false;
     }
     
@@ -105,7 +103,7 @@ export async function increaseZoom(step = 0.1) {
     CONFIG.camera.zoomLevel = newZoom;
     STATE.cameraZoomCapabilities.currentZoom = newZoom;
     
-    log(`🔍 Zoom aumentado a: ${newZoom.toFixed(2)}x`);
+    log(`ðŸ” Zoom aumentado a: ${newZoom.toFixed(2)}x`);
     return true;
     
   } catch (err) {
@@ -115,7 +113,7 @@ export async function increaseZoom(step = 0.1) {
 }
 
 /**
- * ⭐ NUEVA: Disminuir zoom de la cámara
+ * â­ NUEVA: Disminuir zoom de la cÃ¡mara
  * @param {number} step - Cantidad a disminuir (ej: 0.1)
  */
 export async function decreaseZoom(step = 0.1) {
@@ -126,7 +124,7 @@ export async function decreaseZoom(step = 0.1) {
     const capabilities = track.getCapabilities();
     
     if (!capabilities.zoom) {
-      log('⚠️ Zoom no soportado en este dispositivo', 'warn');
+      log('âš ï¸ Zoom no soportado en este dispositivo', 'warn');
       return false;
     }
     
@@ -142,7 +140,7 @@ export async function decreaseZoom(step = 0.1) {
     CONFIG.camera.zoomLevel = newZoom;
     STATE.cameraZoomCapabilities.currentZoom = newZoom;
     
-    log(`🔍 Zoom disminuido a: ${newZoom.toFixed(2)}x`);
+    log(`ðŸ” Zoom disminuido a: ${newZoom.toFixed(2)}x`);
     return true;
     
   } catch (err) {
@@ -152,7 +150,7 @@ export async function decreaseZoom(step = 0.1) {
 }
 
 /**
- * ⭐ NUEVA: Obtener nivel de zoom actual
+ * â­ NUEVA: Obtener nivel de zoom actual
  * @returns {number} - Nivel de zoom actual (ej: 1.0, 2.0, etc)
  */
 export function getCurrentZoom() {
@@ -160,7 +158,7 @@ export function getCurrentZoom() {
 }
 
 /**
- * ⭐ NUEVA: Reset zoom a nivel normal
+ * â­ NUEVA: Reset zoom a nivel normal
  */
 export async function resetZoom() {
   if (!STATE.stream) return false;
@@ -180,7 +178,7 @@ export async function resetZoom() {
     CONFIG.camera.zoomLevel = minZoom;
     STATE.cameraZoomCapabilities.currentZoom = minZoom;
     
-    log(`🔍 Zoom reseteado a: ${minZoom}x`);
+    log(`ðŸ” Zoom reseteado a: ${minZoom}x`);
     return true;
     
   } catch (err) {
@@ -190,7 +188,7 @@ export async function resetZoom() {
 }
 
 /**
- * Detiene el stream de la cámara
+ * Detiene el stream de la cÃ¡mara
  */
 export function stopCamera() {
   if (STATE.stream) {
@@ -203,11 +201,11 @@ export function stopCamera() {
     STATE.video.srcObject = null;
   }
   
-  log('Cámara detenida');
+  log('CÃ¡mara detenida');
 }
 
 /**
- * Verifica si la cámara está activa
+ * Verifica si la cÃ¡mara estÃ¡ activa
  * @returns {boolean}
  */
 export function isCameraActive() {
@@ -215,7 +213,7 @@ export function isCameraActive() {
 }
 
 /**
- * Cambia entre cámara frontal y trasera (si está disponible)
+ * Cambia entre cÃ¡mara frontal y trasera (si estÃ¡ disponible)
  */
 export async function switchCamera() {
   const currentFacing = CONFIG.camera.facingMode;
@@ -227,5 +225,5 @@ export async function switchCamera() {
     await startCamera(STATE.video, STATE.canvas);
   }
   
-  log(`Cámara cambiada a: ${CONFIG.camera.facingMode}`);
+  log(`CÃ¡mara cambiada a: ${CONFIG.camera.facingMode}`);
 }

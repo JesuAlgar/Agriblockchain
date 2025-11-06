@@ -196,6 +196,12 @@
     </div>
   </div>
 
+  <!-- MetaMask SDK (ES Module) -->
+  <script type="module">
+    import MetaMaskSDK from 'https://cdn.jsdelivr.net/npm/@metamask/sdk@0.33.1/dist/browser/es/metamask-sdk.min.js';
+    window.MetaMaskSDK = MetaMaskSDK;
+  </script>
+
   <!-- Scripts modulares -->
   <script type="module" src="./js/app.js"></script>
 <script type="module">
