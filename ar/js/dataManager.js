@@ -1,9 +1,4 @@
-﻿// ============================================
-// DATA MANAGER - BLOCKCHAIN + METAMASK
-// ALTERNATIVA: Usar window.ethereum directamente
-// ============================================
-
-import { CONFIG, getPlantIdFromURL, STATE } from './config.js';
+﻿import { CONFIG, getPlantIdFromURL, STATE } from './config.js';
 import { log } from './utils.js';
 
 const plantDataCache = new Map();
@@ -28,30 +23,57 @@ const FALLBACK_DATA = {
 };
 
 /**
+ * ESPERA A QUE window.ethereum ESTE DISPONIBLE
+ * MetaMask necesita tiempo para inyectar
+ */
+async function waitForMetaMask(maxAttempts = 20) {
+  log('[Blockchain] Esperando a que MetaMask se inyecte...');
+  
+  for (let i = 0; i < maxAttempts; i++) {
+    if (window.ethereum) {
+      log('[Blockchain] MetaMask detectado (intento ' + (i + 1) + ')');
+      return window.ethereum;
+    }
+    
+    // Esperar 500ms entre intentos
+    await new Promise(resolve => setTimeout(resolve, 500));
+  }
+  
+  throw new Error(
+    'MetaMask no disponible. Verifica:\n' +
+    '1. MetaMask app instalada\n' +
+    '2. MetaMask app abierta\n' +
+    '3. Refresca la página\n' +
+    '4. Abre DevTools para ver más detalles'
+  );
+}
+
+/**
  * Conecta a MetaMask usando window.ethereum
- * NO carga SDK completo, usa provider inyectado
  */
 async function connectAndGetContract() {
   try {
     log('[Blockchain] Conectando a MetaMask...');
     
-    // Verificar que MetaMask está disponible
-    if (!window.ethereum) {
-      throw new Error('MetaMask no instalada. Por favor instala la app en tu movil.');
-    }
+    // ESPERAR a que MetaMask esté disponible
+    const ethereum = await waitForMetaMask();
     
     log('[Blockchain] MetaMask disponible');
+    log('[Blockchain] Solicitando cuentas...');
     
     // Solicitar cuentas
-    log('[Blockchain] Solicitando cuentas...');
-    const accounts = await window.ethereum.request({ 
+    const accounts = await ethereum.request({ 
       method: 'eth_requestAccounts' 
     });
     
-    log('[Blockchain] Conectado a cuenta: ' + accounts[0]);
+    if (!accounts || accounts.length === 0) {
+      throw new Error('No se obtuvieron cuentas de MetaMask');
+    }
+    
+    log('[Blockchain] Conectado a: ' + accounts[0]);
     
     // Crear Web3 provider con ethers
-    const ethersProvider = new ethers.providers.Web3Provider(window.ethereum, 'any');
+    const ethersProvider = new ethers.providers.Web3Provider(ethereum, 'any');
     const signer = ethersProvider.getSigner();
     
     log('[Blockchain] Signer obtenido');
@@ -65,7 +87,7 @@ async function connectAndGetContract() {
       log('[Blockchain] No estamos en Sepolia, cambiando...');
       
       try {
-        await window.ethereum.request({
+        await ethereum.request({
           method: 'wallet_switchEthereumChain',
           params: [{ chainId: '0xaa36a7' }]
         });
@@ -73,7 +95,7 @@ async function connectAndGetContract() {
       } catch (switchError) {
         if (switchError.code === 4902) {
           log('[Blockchain] Sepolia no conocida, agregando...');
-          await window.ethereum.request({
+          await ethereum.request({
             method: 'wallet_addEthereumChain',
             params: [{
               chainId: '0xaa36a7',
@@ -102,7 +124,7 @@ async function connectAndGetContract() {
     return contract;
     
   } catch (error) {
-    log('[Blockchain] Error conectando: ' + error.message, 'error');
+    log('[Blockchain] Error: ' + error.message, 'error');
     if (error.stack) {
       console.error('[Blockchain] Stack:', error.stack);
     }
