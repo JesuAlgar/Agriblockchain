@@ -306,9 +306,10 @@ async function getSignerContract() {
  * NUEVA: Carga del MetaMask SDK desde archivo local vendorizado
  */
 async function __loadMetaMaskSDK() {
-  throw new Error('MetaMask SDK no cargado. Incluye ./assets/metamask-sdk.min.js en index.html');
-}
-async function getSignerContractSDK() {
+  // El SDK debe estar incluido en index.html como UMD local
+  if (window.MetaMaskSDK) return window.MetaMaskSDK;
+  throw new Error('MetaMask SDK no cargado. Incluye ./assets/metamask-sdk.min.js (o .iife.js) en index.html');
+}async function getSignerContractSDK() {
   if (typeof window === 'undefined') {
     throw new Error('Entorno sin ventana');
   }
@@ -421,6 +422,7 @@ export async function savePlantData(plantId, data) {
     throw err;
   }
 }
+
 
 
 
