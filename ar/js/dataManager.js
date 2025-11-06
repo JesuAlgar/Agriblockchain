@@ -1,14 +1,13 @@
 ﻿// ============================================
 // DATA MANAGER - BLOCKCHAIN + METAMASK
+// ALTERNATIVA: Usar window.ethereum directamente
 // ============================================
 
 import { CONFIG, getPlantIdFromURL, STATE } from './config.js';
 import { log } from './utils.js';
 
-// Cache de datos
 const plantDataCache = new Map();
 
-// Datos de fallback
 const FALLBACK_DATA = {
   eventType: "MONITOR",
   eventId: "01FALLBACK000000000000000",
@@ -29,137 +28,52 @@ const FALLBACK_DATA = {
 };
 
 /**
- * Carga el MetaMask SDK desde CDN
- * SOLO opciones v11+ validas
- */
-async function loadMetaMaskSDK() {
-  log('[MetaMask SDK] Iniciando carga desde CDN...');
-  
-  return new Promise((resolve, reject) => {
-    // Ya está cargado?
-    if (typeof window.MetaMaskSDK === 'function') {
-      log('[MetaMask SDK] Detectado en window.MetaMaskSDK');
-      return resolve(window.MetaMaskSDK);
-    }
-
-    // Crear script para CDN
-    const script = document.createElement('script');
-    script.src = 'https://cdn.jsdelivr.net/npm/@metamask/sdk@latest/dist/metamask-sdk.js';
-    script.async = true;
-    
-    script.onload = () => {
-      log('[MetaMask SDK] Script cargado del CDN');
-      
-      // Esperar a que window.MetaMaskSDK se defina
-      let attempts = 0;
-      const checkInterval = setInterval(() => {
-        attempts++;
-        
-        if (typeof window.MetaMaskSDK === 'function') {
-          clearInterval(checkInterval);
-          log('[MetaMask SDK] Detectado en window.MetaMaskSDK');
-          resolve(window.MetaMaskSDK);
-        } else if (attempts > 50) {
-          clearInterval(checkInterval);
-          reject(new Error('[MetaMask SDK] No se pudo cargar window.MetaMaskSDK'));
-        }
-      }, 100);
-    };
-    
-    script.onerror = () => {
-      log('[MetaMask SDK] Error cargando CDN', 'error');
-      reject(new Error('[MetaMask SDK] Error cargando de CDN'));
-    };
-    
-    document.head.appendChild(script);
-  });
-}
-
-/**
- * Inicializa MetaMask y obtiene el signer
- * SOLO opciones v11+ validas
- */
-async function initializeMetaMask() {
-  try {
-    log('[Blockchain] Obteniendo SDK...');
-    
-    const MetaMaskSDK = await loadMetaMaskSDK();
-    log('[MetaMask SDK] Constructor obtenido');
-    
-    // SOLO opciones validas v11+
-    const options = {
-      dappMetadata: {
-        name: 'AgriBlockchain',
-        url: typeof window !== 'undefined' ? window.location.origin : ''
-      },
-      useDeeplink: true,
-      checkInstallationImmediately: false
-    };
-    
-    log('[MetaMask SDK] Inicializando con opciones');
-    
-    const mmsdk = new MetaMaskSDK(options);
-    
-    log('[MetaMask SDK] Instancia creada');
-    log('[MetaMask SDK] Obteniendo provider...');
-    
-    const provider = mmsdk.getProvider();
-    
-    if (!provider) {
-      throw new Error('No se pudo obtener provider de MetaMask SDK');
-    }
-    
-    log('[MetaMask SDK] Provider obtenido');
-    
-    return provider;
-    
-  } catch (error) {
-    log('[Blockchain] Error inicializando MetaMask: ' + error.message, 'error');
-    throw error;
-  }
-}
-
-/**
- * Conecta a MetaMask y retorna el contrato
+ * Conecta a MetaMask usando window.ethereum
+ * NO carga SDK completo, usa provider inyectado
  */
 async function connectAndGetContract() {
   try {
     log('[Blockchain] Conectando a MetaMask...');
     
-    const provider = await initializeMetaMask();
+    // Verificar que MetaMask está disponible
+    if (!window.ethereum) {
+      throw new Error('MetaMask no instalada. Por favor instala la app en tu movil.');
+    }
+    
+    log('[Blockchain] MetaMask disponible');
     
     // Solicitar cuentas
     log('[Blockchain] Solicitando cuentas...');
-    const accounts = await provider.request({ 
+    const accounts = await window.ethereum.request({ 
       method: 'eth_requestAccounts' 
     });
     
     log('[Blockchain] Conectado a cuenta: ' + accounts[0]);
     
     // Crear Web3 provider con ethers
-    const ethersProvider = new ethers.providers.Web3Provider(provider, 'any');
+    const ethersProvider = new ethers.providers.Web3Provider(window.ethereum, 'any');
     const signer = ethersProvider.getSigner();
     
     log('[Blockchain] Signer obtenido');
     
     // Verificar red
     const network = await ethersProvider.getNetwork();
-    log('[Blockchain] Red actual: ' + network.chainId);
+    log('[Blockchain] Red actual: chainId ' + network.chainId);
     
     // Si no es Sepolia (11155111), cambiar
     if (network.chainId !== 11155111) {
-      log('[Blockchain] Cambiando a Sepolia...');
+      log('[Blockchain] No estamos en Sepolia, cambiando...');
       
       try {
-        await provider.request({
+        await window.ethereum.request({
           method: 'wallet_switchEthereumChain',
           params: [{ chainId: '0xaa36a7' }]
         });
         log('[Blockchain] Red cambiada a Sepolia');
       } catch (switchError) {
         if (switchError.code === 4902) {
-          log('[Blockchain] Agregando Sepolia...');
-          await provider.request({
+          log('[Blockchain] Sepolia no conocida, agregando...');
+          await window.ethereum.request({
             method: 'wallet_addEthereumChain',
             params: [{
               chainId: '0xaa36a7',
