@@ -372,17 +372,13 @@ async function getSignerContractSDK() {
     try {
       log('[MetaMask] No hay provider inyectado, cargando SDK...');
       const SDKMod = await __loadMetaMaskSDK();
-      const SDKCtor = SDKMod.MetaMaskSDK || SDKMod.default || SDKMod;
+      const SDKCtor = SDKMod.default || SDKMod;
 
-      log('[MetaMask SDK] Inicializando con opciones deeplink...');
+      log('[MetaMask SDK] Inicializando (deeplink habilitado)...');
       const MMSDK = new SDKCtor({
         dappMetadata: { name: 'AgriBlockchain', url: location.origin },
-        communicationLayerPreference: 'webrtc',
         useDeeplink: true,
-        shouldShimWeb3: false,
-        enableAnalytics: false,
-        forceDeleteProvider: true,
-        injectProvider: true
+        checkInstallationImmediately: false
       });
 
       ethProvider = MMSDK.getProvider();
@@ -473,6 +469,7 @@ export async function savePlantData(plantId, data) {
     throw err;
   }
 }
+
 
 
 
