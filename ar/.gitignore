@@ -1,6 +1,7 @@
-# MetaMask SDK vendorizado (grande, debe descargarse manualmente)
-assets/metamask-sdk*.js
-assets/metamask-sdk*.map
+# MetaMask SDK vendorizado
+# NOTA: Comentado temporalmente para permitir deploy a Netlify
+# assets/metamask-sdk*.js
+# assets/metamask-sdk*.map
 
 # Backups
 *.bak
