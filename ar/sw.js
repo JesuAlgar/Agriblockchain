@@ -1,4 +1,4 @@
-﻿const CACHE_NAME = 'ar-planta-v3';
+﻿const CACHE_NAME = 'ar-planta-v4';
 const urlsToCache = [
   './',
   './index.html',
@@ -13,6 +13,7 @@ const urlsToCache = [
   './data/planta01.json',
   './manifest.json',
   './assets/plant.png'
+  // IMPORTANTE: NO cachear ./assets/metamask-sdk.min.js para evitar versiones obsoletas
 ];
 
 // Instalar
@@ -51,17 +52,33 @@ self.addEventListener('activate', event => {
 
 // Fetch
 self.addEventListener('fetch', event => {
+  const url = new URL(event.request.url);
+
+  // NO interceptar peticiones cross-origin (CDNs, APIs externas, etc.)
+  if (url.origin !== self.location.origin) {
+    // Dejar que el navegador maneje cross-origin directamente
+    return;
+  }
+
+  // NO cachear el SDK de MetaMask para evitar problemas de versión
+  if (url.pathname.includes('metamask-sdk')) {
+    // Fetch directo, sin cache
+    event.respondWith(fetch(event.request));
+    return;
+  }
+
+  // Para recursos same-origin (nuestros archivos locales)
   event.respondWith(
     caches.match(event.request)
       .then(response => {
-        // Si estÃ¡ en cache, devolverlo
+        // Si está en cache, devolverlo
         if (response) {
           return response;
         }
         // Si no, hacer fetch
         return fetch(event.request).catch(() => {
-          // Si falla el fetch, devolver pÃ¡gina offline si es HTML
-          if (event.request.headers.get('accept').includes('text/html')) {
+          // Si falla el fetch, devolver página offline si es HTML
+          if (event.request.headers.get('accept')?.includes('text/html')) {
             return caches.match('./index.html');
           }
         });

@@ -303,40 +303,56 @@ async function getSignerContract() {
 }
 
 /**
- * NUEVA: VersiÃ³n con fallback a MetaMask SDK
+ * NUEVA: Carga del MetaMask SDK desde archivo local vendorizado
  */
-  // Carga diferida del MetaMask SDK
-  async function __loadMetaMaskSDK() {
-  if (window.MetaMaskSDK) return window.MetaMaskSDK;
+async function __loadMetaMaskSDK() {
+  // Si ya está cargado, retornar
+  if (window.MetaMaskSDK) {
+    log('[MetaMask SDK] Ya está cargado');
+    return window.MetaMaskSDK;
+  }
+
+  // Si ya está en proceso de carga, esperar
   if (window.__mmsdkLoading) {
+    log('[MetaMask SDK] Esperando carga en progreso...');
     await window.__mmsdkLoading;
     return window.MetaMaskSDK;
   }
+
+  // Iniciar carga única
   window.__mmsdkLoading = new Promise((resolve, reject) => {
-    const sources = [
-      'https://cdn.jsdelivr.net/npm/@metamask/sdk@1.1.3/dist/browser/umd/metamask-sdk.js',
-      'https://unpkg.com/@metamask/sdk@1.1.3/dist/browser/umd/metamask-sdk.js'
-    ];
-    let index = 0;
-    const tryLoad = () => {
-      if (index >= sources.length) {
-        reject(new Error('No se pudo cargar MetaMask SDK (CDNs)'));
-        return;
-      }
-      try {
-        const s = document.createElement('script');
-        s.src = sources[index] + '?nocache=' + Date.now();
-        s.async = true;
-        s.onload = () => resolve();
-        s.onerror = () => { index++; tryLoad(); };
-        document.head.appendChild(s);
-      } catch (e) {
-        index++;
-        tryLoad();
+    const localPath = './assets/metamask-sdk.min.js';
+
+    log(`[MetaMask SDK] Cargando desde: ${localPath}`);
+
+    const script = document.createElement('script');
+    script.src = localPath;
+    script.async = true;
+
+    script.onload = () => {
+      if (window.MetaMaskSDK) {
+        log('[MetaMask SDK] ✅ Cargado exitosamente');
+        resolve(window.MetaMaskSDK);
+      } else {
+        const err = new Error('SDK cargado pero window.MetaMaskSDK no está definido');
+        log(`[MetaMask SDK] ❌ ${err.message}`, 'error');
+        reject(err);
       }
     };
-    tryLoad();
+
+    script.onerror = () => {
+      const err = new Error(
+        `No se encontró ${localPath}. ` +
+        `Descarga el SDK desde https://github.com/MetaMask/metamask-sdk/releases ` +
+        `y colócalo en ar/assets/metamask-sdk.min.js`
+      );
+      log(`[MetaMask SDK] ❌ ${err.message}`, 'error');
+      reject(err);
+    };
+
+    document.head.appendChild(script);
   });
+
   await window.__mmsdkLoading;
   return window.MetaMaskSDK;
 }
@@ -344,14 +360,21 @@ async function getSignerContractSDK() {
   if (typeof window === 'undefined') {
     throw new Error('Entorno sin ventana');
   }
-  let ethProvider = null;
-  if (window.ethereum) {
-    ethProvider = window.ethereum;
 
-    } else {
+  let ethProvider = null;
+
+  // Intentar usar window.ethereum primero (extensión o app ya inyectada)
+  if (window.ethereum) {
+    log('[MetaMask] Usando provider ya inyectado (extensión o app)');
+    ethProvider = window.ethereum;
+  } else {
+    // Si no hay provider, cargar SDK para abrir MetaMask app
     try {
+      log('[MetaMask] No hay provider inyectado, cargando SDK...');
       const SDKMod = await __loadMetaMaskSDK();
       const SDKCtor = SDKMod.MetaMaskSDK || SDKMod.default || SDKMod;
+
+      log('[MetaMask SDK] Inicializando con opciones deeplink...');
       const MMSDK = new SDKCtor({
         dappMetadata: { name: 'AgriBlockchain', url: location.origin },
         communicationLayerPreference: 'webrtc',
@@ -361,9 +384,15 @@ async function getSignerContractSDK() {
         forceDeleteProvider: true,
         injectProvider: true
       });
+
       ethProvider = MMSDK.getProvider();
+      log('[MetaMask SDK] ✅ Provider obtenido del SDK');
     } catch (e) {
-      throw new Error('No se pudo inicializar MetaMask SDK');
+      log(`[MetaMask SDK] ❌ Error: ${e.message}`, 'error');
+      if (e.stack) {
+        console.error('[MetaMask SDK] Stack trace:', e.stack);
+      }
+      throw new Error(`No se pudo inicializar MetaMask SDK: ${e.message}`);
     }
   }
   if (!ethProvider) {
@@ -413,22 +442,34 @@ async function getSignerContractSDK() {
  */
 export async function savePlantData(plantId, data) {
   try {
+    log('[Blockchain] Iniciando guardado para plantId: ' + plantId);
+
     const contract = await getSignerContractSDK();
     const json = JSON.stringify(data);
 
-    log(`â¬†ï¸ Enviando setPlantData(${plantId})...`);
+    log('[Blockchain] Enviando setPlantData(' + plantId + ')...');
+    log('[Blockchain] Datos: ' + json.substring(0, 100) + '...');
+
     const tx = await contract.setPlantData(plantId, json);
-    log(`ðŸ“¨ Tx enviada: ${tx.hash}`);
+    const txHash = tx.hash;
+    log('[Blockchain] Tx enviada - Hash: ' + txHash);
+    log('[Blockchain] Ver en Etherscan: https://sepolia.etherscan.io/tx/' + txHash);
 
+    log('[Blockchain] Esperando confirmacion...');
     const receipt = await tx.wait();
-    log(`âœ… Tx confirmada en bloque ${receipt.blockNumber}`);
+    log('[Blockchain] Tx confirmada en bloque ' + receipt.blockNumber);
+    log('[Blockchain] Gas usado: ' + receipt.gasUsed.toString());
 
-    // Limpiar cachÃ© para forzar recarga fresca
+    // Limpiar cache para forzar recarga fresca
     try { clearPlantCache(0); } catch {}
+
     return receipt;
 
   } catch (err) {
-    log(`Error guardando en blockchain: ${err.message}`, 'error');
+    log('[Blockchain] Error guardando: ' + err.message, 'error');
+    if (err.stack) {
+      console.error('[Blockchain] Stack trace:', err.stack);
+    }
     throw err;
   }
 }

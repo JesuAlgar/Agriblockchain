@@ -1,0 +1,7 @@
+# MetaMask SDK vendorizado (grande, debe descargarse manualmente)
+assets/metamask-sdk*.js
+assets/metamask-sdk*.map
+
+# Backups
+*.bak
+*.backup

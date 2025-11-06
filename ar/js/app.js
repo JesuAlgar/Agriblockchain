@@ -242,7 +242,21 @@ async function openSaveModal() {
 
   form.onsubmit = async (e) => {
     e.preventDefault();
+
+    // Prevenir múltiples envíos concurrentes
+    const submitBtn = form.querySelector('button[type="submit"]');
+    if (submitBtn && submitBtn.disabled) {
+      log('[SaveModal] Submit ya en progreso, ignorando...');
+      return;
+    }
+
     try {
+      // Deshabilitar botón de submit
+      if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.textContent = 'Enviando...';
+      }
+
       const payload = {
         eventType: form.querySelector('#f_eventType').value || 'SEEDING',
         eventId: form.querySelector('#f_eventId').value,
@@ -274,6 +288,12 @@ async function openSaveModal() {
         showAlert("MetaMask no está disponible o el SDK no pudo cargarse. Abre la app de MetaMask para firmar y vuelve, o instala la extensión en escritorio.", "warning");
       } else {
         showAlert(`Error al guardar: ${msg}`, "danger");
+      }
+    } finally {
+      // Re-habilitar botón de submit
+      if (submitBtn) {
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Guardar en Blockchain';
       }
     }
   };
