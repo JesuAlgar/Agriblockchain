@@ -1,345 +1,273 @@
 // ============================================
-// APLICACIÓN PRINCIPAL
+// APP.JS - INTEGRACION COMPLETA
 // ============================================
 
-import { CONFIG, STATE } from './config.js';
+import { loginWithMagic, getMagicUser, logoutMagic, savePlantData } from './dataManager.js';
 import { log } from './utils.js';
-import { preloadPlantData, savePlantData, getCachedPlantData, loadPlantData } from './dataManager.js';
-import { startCamera, increaseZoom, decreaseZoom, resetZoom, getCurrentZoom } from './camera.js';
-import { loadModel, detect } from './detector.js';
-import { toggleTheme, toggleFullscreen, showAlert } from './ui.js';
-import { getPlantIdFromURL } from './config.js';
+
+let isModelLoaded = false;
+let net;
 
 /**
- * Inicializa los event listeners de los controles
+ * INICIALIZAR APP
  */
-function initControls() {
-  // Botón cambiar tema
-  const btnTheme = document.getElementById('btnTheme');
-  if (btnTheme) {
-    btnTheme.addEventListener('click', toggleTheme);
-    log('✓ Control de tema inicializado');
-  }
-
-  // Botón pantalla completa
-  const btnFullscreen = document.getElementById('btnFullscreen');
-  if (btnFullscreen) {
-    btnFullscreen.addEventListener('click', toggleFullscreen);
-    log('✓ Control de pantalla completa inicializado');
-  }
-}
-
-// Controles de zoom
-function initZoomControls() {
-  const btnZoomIn = document.getElementById('btnZoomIn');
-  if (btnZoomIn) {
-    btnZoomIn.addEventListener('click', async () => {
-      await increaseZoom(CONFIG.camera.zoomStep);
-      updateZoomIndicator();
-    });
-    log('Control Zoom + inicializado');
-  }
-  const btnZoomOut = document.getElementById('btnZoomOut');
-  if (btnZoomOut) {
-    btnZoomOut.addEventListener('click', async () => {
-      await decreaseZoom(CONFIG.camera.zoomStep);
-      updateZoomIndicator();
-    });
-    log('Control Zoom - inicializado');
-  }
-  const btnZoomReset = document.getElementById('btnZoomReset');
-  if (btnZoomReset) {
-    btnZoomReset.addEventListener('click', async () => {
-      await resetZoom();
-      updateZoomIndicator();
-    });
-    log('Control Reset Zoom inicializado');
-  }
-}
-
-function updateZoomIndicator() {
-  const indicator = document.getElementById('zoomIndicator');
-  if (!indicator) return;
-  const z = getCurrentZoom();
+async function initApp() {
+  log('Inicializando app...');
+  
   try {
-    indicator.textContent = `Zoom: ${z.toFixed(1)}x`;
-  } catch {
-    indicator.textContent = `Zoom: ${z}x`;
+    log('Cargando modelo de IA...');
+    net = await cocoSsd.load();
+    isModelLoaded = true;
+    log('✅ Modelo cargado');
+    document.getElementById('loading').style.display = 'none';
+  } catch (error) {
+    log('❌ Error cargando modelo: ' + error.message, 'error');
   }
-}
 
-// Nuevo: versión simple del control de guardado
-function initSaveControl2() {
-  const btnSave = document.getElementById('btnSaveChain');
-  if (!btnSave) return;
-  btnSave.addEventListener('click', async () => {
-    try {
-      await openSaveModal();
-    } catch (err) {
-      showAlert(`Error: ${err.message}`);
-    }
-  });
-}
-
-
-/**
- * Registra el Service Worker para PWA
- */
-function registerServiceWorker() {
-  if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('./sw.js')
-      .then(() => log('✓ Service Worker registrado'))
-      .catch(err => log(`Service Worker no disponible: ${err.message}`, 'warn'));
+  setupUIEvents();
+  
+  const user = await getMagicUser();
+  if (user) {
+    log('✅ Usuario ya logeado: ' + user.email);
+    updateUILogged(user);
+  } else {
+    log('Usuario no logeado');
+    updateUINotLogged();
   }
 }
 
 /**
- * Inicialización principal de la aplicación
+ * SETUP EVENTOS UI
  */
-async function init() {
-  try {
-    log('=== Iniciando AR Planta IA ===');
-
-    // Obtener referencias a elementos del DOM
-    const video = document.getElementById('camera');
-    const canvas = document.getElementById('canvas');
-    const container = document.getElementById('container');
-
-    if (!video || !canvas || !container) {
-      throw new Error('Elementos del DOM no encontrados');
-    }
-
-    // Guardar referencias en el estado global
-    STATE.container = container;
-
-    // ⭐ LIMPIAR paneles antiguos que puedan existir
-    document.querySelectorAll('.data-panel').forEach(panel => panel.remove());
-    log('✓ Paneles antiguos limpiados');
-
-    // Paso 1: Inicializar controles
-    log('1/5 Inicializando controles...');
-    initControls();
-    initZoomControls();
-    initSaveControl2();
-
-    // Paso 2: Registrar Service Worker
-    log('2/5 Registrando Service Worker...');
-    registerServiceWorker();
-
-    // Paso 3: Iniciar cámara (OPCIONAL - no bloquea si falla)
-    log('3/5 Iniciando cámara...');
-    let cameraStarted = false;
-    try {
-      await startCamera(video, canvas);
-      updateZoomIndicator();
-      cameraStarted = true;
-      log('✓ Cámara iniciada correctamente');
-    } catch (cameraErr) {
-      log(`⚠️ No se pudo iniciar la cámara: ${cameraErr.message}`, 'warn');
-
-      // Mostrar botón "Skip camera" similar al "Skip AI"
-      const statusElement = document.getElementById('status');
-      const loadingElement = document.getElementById('loading');
-
-      if (statusElement) {
-        statusElement.innerHTML = `
-          ⚠️ Error al acceder a la cámara<br>
-          <small style="font-size: 0.8em;">No se pudo obtener acceso a la cámara. Puedes:</small><br>
-          <button id="btnSkipCamera" style="margin-top: 8px; padding: 8px 16px; background: #02eef0; border: none; border-radius: 4px; cursor: pointer;">
-            ⏭️ Continuar sin cámara (solo blockchain)
-          </button>
-        `;
-
-        // Añadir listener al botón
-        const skipBtn = document.getElementById('btnSkipCamera');
-        if (skipBtn) {
-          skipBtn.onclick = () => {
-            log('Usuario decidió continuar sin cámara');
-            if (statusElement) statusElement.textContent = '📱 Modo solo blockchain';
-            if (loadingElement) loadingElement.classList.add('hidden');
-
-            // Continuar sin cámara ni IA
-            log('📱 Modo solo blockchain activo - Pre-cargando datos...');
-            preloadPlantData(1).then(() => {
-              log('✓ Datos pre-cargados. App lista (sin cámara/IA).');
-            }).catch(err => {
-              log(`Error pre-cargando datos: ${err.message}`, 'error');
-            });
-          };
-        }
+function setupUIEvents() {
+  const loginBtn = document.getElementById('btnLogin');
+  const emailInput = document.getElementById('emailInput');
+  
+  if (loginBtn) {
+    loginBtn.addEventListener('click', async () => {
+      const email = emailInput.value.trim();
+      if (!email) {
+        log('Por favor ingresa un email', 'warn');
+        return;
       }
+      await handleLogin(email);
+    });
+  }
 
-      // Esperar decisión del usuario - NO continuar automáticamente
+  const logoutBtn = document.getElementById('btnLogout');
+  if (logoutBtn) {
+    logoutBtn.addEventListener('click', handleLogout);
+  }
+
+  const saveChainBtn = document.getElementById('btnSaveChain');
+  if (saveChainBtn) {
+    saveChainBtn.addEventListener('click', handleSaveBlockchain);
+  }
+
+  const confirmSaveBtn = document.getElementById('btnConfirmSave');
+  if (confirmSaveBtn) {
+    confirmSaveBtn.addEventListener('click', handleConfirmSave);
+  }
+
+  const cancelSaveBtn = document.getElementById('btnCancelSave');
+  if (cancelSaveBtn) {
+    cancelSaveBtn.addEventListener('click', handleCancelSave);
+  }
+
+  const zoomInBtn = document.getElementById('btnZoomIn');
+  const zoomOutBtn = document.getElementById('btnZoomOut');
+  const zoomResetBtn = document.getElementById('btnZoomReset');
+
+  if (zoomInBtn) zoomInBtn.addEventListener('click', () => zoomCamera(1.2));
+  if (zoomOutBtn) zoomOutBtn.addEventListener('click', () => zoomCamera(0.8));
+  if (zoomResetBtn) zoomResetBtn.addEventListener('click', () => zoomCamera(1.0));
+}
+
+/**
+ * HANDLE LOGIN
+ */
+async function handleLogin(email) {
+  try {
+    log('Intentando login con: ' + email);
+    
+    const token = await loginWithMagic(email);
+    
+    log('✅ Login exitoso');
+    
+    const user = await getMagicUser();
+    updateUILogged(user);
+
+  } catch (error) {
+    log('❌ Error en login: ' + error.message, 'error');
+  }
+}
+
+/**
+ * HANDLE LOGOUT
+ */
+async function handleLogout() {
+  try {
+    await logoutMagic();
+    log('✅ Logout exitoso');
+    updateUINotLogged();
+  } catch (error) {
+    log('❌ Error en logout: ' + error.message, 'error');
+  }
+}
+
+/**
+ * UPDATE UI - LOGEADO
+ */
+function updateUILogged(user) {
+  log('Actualizando UI - Usuario logeado: ' + user.email);
+
+  const statusDiv = document.getElementById('status');
+  if (statusDiv) {
+    statusDiv.innerHTML = '✅ ' + user.email + ' | ' + user.publicAddress.substring(0, 10) + '...';
+  }
+
+  const saveChainBtn = document.getElementById('btnSaveChain');
+  if (saveChainBtn) saveChainBtn.disabled = false;
+
+  const form = document.getElementById('loginForm');
+  if (form) form.style.display = 'none';
+}
+
+/**
+ * UPDATE UI - NO LOGEADO
+ */
+function updateUINotLogged() {
+  log('Actualizando UI - No logeado');
+
+  const statusDiv = document.getElementById('status');
+  if (statusDiv) {
+    statusDiv.innerHTML = '⚠️ No logeado';
+  }
+
+  const saveChainBtn = document.getElementById('btnSaveChain');
+  if (saveChainBtn) saveChainBtn.disabled = true;
+
+  const form = document.getElementById('loginForm');
+  if (form) form.style.display = 'block';
+}
+
+/**
+ * HANDLE GUARDAR EN BLOCKCHAIN
+ */
+async function handleSaveBlockchain() {
+  try {
+    const user = await getMagicUser();
+    
+    if (!user) {
+      log('❌ No logeado. Haz login primero', 'error');
       return;
     }
 
-    // Solo continuar con IA si la cámara funciona
-    if (cameraStarted) {
-      // Paso 4: Cargar modelo de IA
-      log('4/5 Cargando modelo de IA...');
-      await loadModel();
+    log('📝 Abriendo formulario de guardado...');
 
-      // Paso 5: Pre-cargar datos (opcional, mejora rendimiento inicial)
-      log('5/5 Pre-cargando datos...');
-      await preloadPlantData(2); // Pre-cargar 2 plantas
-
-      // Iniciar loop de detección
-      log('✓ Inicialización completa. Iniciando detección...');
-      detect();
+    const form = document.getElementById('saveForm');
+    if (form) {
+      document.getElementById('f_eventId').value = 'EVT-' + Date.now();
+      document.getElementById('f_batchId').value = 'BATCH-' + Math.random().toString(36).substr(2, 9);
+      document.getElementById('f_timestamp').value = new Date().toISOString();
+      document.getElementById('f_lotCode').value = 'LOT-' + new Date().getFullYear();
+      document.getElementById('f_recordedBy').value = 'device-' + user.publicAddress.substring(0, 8);
     }
 
-  } catch (err) {
-    log(`Error crítico en inicialización: ${err.message}`, 'error');
-
-    // Mostrar error en UI
-    const statusElement = document.getElementById('status');
-    if (statusElement) {
-      statusElement.textContent = `⚠️ Error: ${err.message}`;
+    const modal = document.getElementById('saveModal');
+    if (modal) {
+      modal.classList.remove('hidden');
     }
+
+  } catch (error) {
+    log('❌ Error: ' + error.message, 'error');
   }
 }
 
-// Iniciar aplicación cuando el DOM esté listo
-if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', init);
-} else {
-  init();
+/**
+ * HANDLE CONFIRMAR GUARDADO
+ */
+async function handleConfirmSave(e) {
+  e.preventDefault();
+
+  try {
+    const user = await getMagicUser();
+    if (!user) {
+      log('❌ No logeado', 'error');
+      return;
+    }
+
+    log('💾 Guardando datos...');
+
+    const data = {
+      eventType: document.getElementById('f_eventType').value || 'MONITOR',
+      eventId: document.getElementById('f_eventId').value,
+      batchId: document.getElementById('f_batchId').value,
+      timestamp: document.getElementById('f_timestamp').value,
+      lotCode: document.getElementById('f_lotCode').value,
+      recordedBy: document.getElementById('f_recordedBy').value,
+      fieldId: document.getElementById('f_fieldId').value || 'FIELD-1',
+      seed_LotId: document.getElementById('f_seedLotId').value || 'SEED-001',
+      seedVariety: document.getElementById('f_seedVariety').value || 'Unknown',
+      seedSupplier: document.getElementById('f_seedSupplier').value || 'Unknown',
+      seedTreatment: document.getElementById('f_seedTreatment').value || 'None',
+      quantity_kg: parseFloat(document.getElementById('f_quantityKg').value) || 0,
+      plantingMethod: document.getElementById('f_plantingMethod').value || 'Manual',
+      rowSpacing_cm: parseInt(document.getElementById('f_rowSpacing').value) || 20,
+      plantingDepth_cm: parseFloat(document.getElementById('f_plantingDepth').value) || 2.0,
+      germinationRate_pct: parseInt(document.getElementById('f_germinationRate').value) || 80
+    };
+
+    log('📤 Enviando datos...');
+
+    const result = await savePlantData('plant-' + user.publicAddress, data);
+
+    log('✅ ¡Guardado exitosamente!');
+
+    const modal = document.getElementById('saveModal');
+    if (modal) {
+      modal.classList.add('hidden');
+    }
+
+  } catch (error) {
+    log('❌ Error guardando: ' + error.message, 'error');
+  }
 }
 
-// Manejar errores no capturados
-window.addEventListener('error', (event) => {
-  log(`Error no capturado: ${event.message}`, 'error');
-});
-
-window.addEventListener('unhandledrejection', (event) => {
-  log(`Promise rechazada: ${event.reason}`, 'error');
-});
-
-// ==========================
-// Modal Guardar en blockchain
-// ==========================
-function genId(prefix = '') {
-  const bytes = crypto.getRandomValues(new Uint8Array(8));
-  const hex = Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('');
-  return prefix ? `${prefix}-${hex}` : hex;
-}
-
-function genLotCode(fieldId) {
-  const d = new Date();
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, '0');
-  const day = String(d.getDate()).padStart(2, '0');
-  const plot = (fieldId || 'PLOT').toString().replace(/\s+/g, '-');
-  return `FARM-${y}-${m}-${day}-${plot}`;
-}
-
-async function openSaveModal() {
+/**
+ * HANDLE CANCELAR GUARDADO
+ */
+function handleCancelSave() {
   const modal = document.getElementById('saveModal');
-  const form = document.getElementById('saveForm');
-  const cancelBtn = document.getElementById('btnCancelSave');
-  if (!modal || !form || !cancelBtn) return;
-
-  // Obtener datos actuales (de caché o cargándolos)
-  let data = getCachedPlantData(0)?.data;
-  if (!data) {
-    try { data = await loadPlantData(0); } catch {}
-  }
-  data = data || {};
-
-  // Autocompletar campos auto
-  const nowIso = new Date().toISOString();
-  const auto = {
-    eventId: genId('EVT'),
-    batchId: genId('BATCH'),
-    timestamp: nowIso,
-    lotCode: genLotCode(data.fieldId)
-  };
-
-  // Poner valores en el formulario
-  form.querySelector('#f_eventId').value = auto.eventId;
-  form.querySelector('#f_batchId').value = auto.batchId;
-  form.querySelector('#f_timestamp').value = auto.timestamp;
-  form.querySelector('#f_lotCode').value = auto.lotCode;
-
-  form.querySelector('#f_eventType').value = data.eventType || '';
-  form.querySelector('#f_recordedBy').value = data.recordedBy || '';
-  form.querySelector('#f_fieldId').value = data.fieldId || '';
-  form.querySelector('#f_seedLotId').value = data.seed_LotId || '';
-  form.querySelector('#f_seedVariety').value = data.seedVariety || '';
-  form.querySelector('#f_seedSupplier').value = data.seedSupplier || '';
-  form.querySelector('#f_seedTreatment').value = data.seedTreatment || '';
-  form.querySelector('#f_quantityKg').value = data.quantity_kg ?? '';
-  form.querySelector('#f_plantingMethod').value = data.plantingMethod || '';
-  form.querySelector('#f_rowSpacing').value = data.rowSpacing_cm ?? '';
-  form.querySelector('#f_plantingDepth').value = data.plantingDepth_cm ?? '';
-  form.querySelector('#f_germinationRate').value = data.germinationRate_pct ?? '';
-
-  // Mostrar modal
-  modal.classList.remove('hidden');
-
-  function close() {
+  if (modal) {
     modal.classList.add('hidden');
-    form.onsubmit = null;
-    cancelBtn.onclick = null;
   }
-
-  cancelBtn.onclick = close;
-
-  form.onsubmit = async (e) => {
-    e.preventDefault();
-
-    // Prevenir múltiples envíos concurrentes
-    const submitBtn = form.querySelector('button[type="submit"]');
-    if (submitBtn && submitBtn.disabled) {
-      log('[SaveModal] Submit ya en progreso, ignorando...');
-      return;
-    }
-
-    try {
-      // Deshabilitar botón de submit
-      if (submitBtn) {
-        submitBtn.disabled = true;
-        submitBtn.textContent = 'Enviando...';
-      }
-
-      const payload = {
-        eventType: form.querySelector('#f_eventType').value || 'SEEDING',
-        eventId: form.querySelector('#f_eventId').value,
-        batchId: form.querySelector('#f_batchId').value,
-        lotCode: form.querySelector('#f_lotCode').value,
-        timestamp: form.querySelector('#f_timestamp').value,
-        recordedBy: form.querySelector('#f_recordedBy').value || 'device-unknown',
-        fieldId: form.querySelector('#f_fieldId').value || 'PLOT',
-        seed_LotId: form.querySelector('#f_seedLotId').value || '',
-        seedVariety: form.querySelector('#f_seedVariety').value || '',
-        seedSupplier: form.querySelector('#f_seedSupplier').value || '',
-        seedTreatment: form.querySelector('#f_seedTreatment').value || '',
-        quantity_kg: parseFloat(form.querySelector('#f_quantityKg').value || '0') || 0,
-        plantingMethod: form.querySelector('#f_plantingMethod').value || '',
-        rowSpacing_cm: parseInt(form.querySelector('#f_rowSpacing').value || '0') || 0,
-        plantingDepth_cm: parseFloat(form.querySelector('#f_plantingDepth').value || '0') || 0,
-        germinationRate_pct: parseInt(form.querySelector('#f_germinationRate').value || '0') || 0,
-      };
-
-      const plantId = getPlantIdFromURL();
-      showAlert('Enviando a blockchain...', 'warning');
-      await savePlantData(plantId, payload);
-      showAlert('Datos guardados en blockchain', 'success');
-      close();
-    } catch (err) {
-      // Aviso claro y guía cuando MetaMask/SDK no está disponible
-      const msg = (err && err.message) ? err.message : String(err);
-      if (msg.includes("MetaMask") || msg.includes("SDK")) {
-        showAlert("MetaMask no está disponible o el SDK no pudo cargarse. Abre la app de MetaMask para firmar y vuelve, o instala la extensión en escritorio.", "warning");
-      } else {
-        showAlert(`Error al guardar: ${msg}`, "danger");
-      }
-    } finally {
-      // Re-habilitar botón de submit
-      if (submitBtn) {
-        submitBtn.disabled = false;
-        submitBtn.textContent = 'Guardar en Blockchain';
-      }
-    }
-  };
+  log('Guardado cancelado');
 }
+
+/**
+ * ZOOM CAMERA
+ */
+function zoomCamera(factor) {
+  const canvas = document.getElementById('canvas');
+  if (!canvas) return;
+
+  const style = canvas.style.transform || 'scale(1)';
+  const currentScale = parseFloat(style.match(/\d+\.?\d*/)[0]) || 1;
+  const newScale = currentScale * factor;
+
+  canvas.style.transform = 'scale(' + newScale + ')';
+  
+  const indicator = document.getElementById('zoomIndicator');
+  if (indicator) {
+    indicator.textContent = 'Zoom: ' + newScale.toFixed(1) + 'x';
+  }
+}
+
+/**
+ * CUANDO CARGA LA PAGINA
+ */
+document.addEventListener('DOMContentLoaded', () => {
+  log('DOM cargado');
+  initApp();
+});

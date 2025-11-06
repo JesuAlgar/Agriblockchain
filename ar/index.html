@@ -63,7 +63,7 @@
       <button class="btn-control btn-zoom" id="btnZoomIn" title="Zoom mas">+</button>
       <button class="btn-control btn-zoom" id="btnZoomReset" title="Reset zoom">Reset</button>
       <button class="btn-control" id="btnWasmToggle" title="Backend TFJS">TF</button>
-      <button class="btn-control" id="btnSaveChain" title="Guardar en blockchain">BC</button>
+      <button class="btn-control" id="btnSaveChain" title="Guardar en blockchain" disabled>BC</button>
       <button class="btn-control" id="btnTheme" title="Cambiar tema">Theme</button>
     </div>
   </div>
@@ -91,6 +91,23 @@
 
   <button class="btn-fullscreen" id="btnFullscreen" title="Pantalla completa">Fullscreen</button>
 
+  <!-- FORMULARIO LOGIN -->
+  <div class="modal-overlay" id="loginForm">
+    <div class="modal">
+      <h2>Iniciar Sesión</h2>
+      <form style="display: flex; flex-direction: column; gap: 12px;">
+        <label>
+          <span>Email</span>
+          <input type="email" id="emailInput" placeholder="tu@email.com" required>
+        </label>
+        <button type="button" class="btn-control" id="btnLogin" style="width: 100%; padding: 12px;">
+          Iniciar Sesión
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL GUARDAR EN BLOCKCHAIN -->
   <div class="modal-overlay hidden" id="saveModal">
     <div class="modal">
       <h2 style="margin-bottom:12px">Guardar en blockchain</h2>
