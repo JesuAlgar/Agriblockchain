@@ -86,12 +86,39 @@ export async function loadModel() {
       loadingElement.appendChild(progressText);
     }
     
-    // Cargar modelo con timeout para evitar bloqueos en algunos móviles
+    // Cargar modelo con timeout más largo (60s para móviles lentos)
     const loadPromise = (typeof cocoSsd !== 'undefined' && cocoSsd.load)
       ? cocoSsd.load(modelConfig)
       : Promise.reject(new Error('coco-ssd no disponible'));
-    const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('timeout cargando modelo')), 25000));
-    STATE.model = await Promise.race([loadPromise, timeoutPromise]);
+
+    // Timeout más largo (60 segundos) + feedback cada 5 segundos
+    let progressInterval;
+    const timeoutPromise = new Promise((_, reject) => {
+      let elapsed = 0;
+      progressInterval = setInterval(() => {
+        elapsed += 5000;
+        if (loadingElement) {
+          const progressText = loadingElement.querySelector('small');
+          if (progressText) {
+            progressText.textContent = `Cargando modelo... (${Math.floor(elapsed/1000)}s)`;
+          }
+        }
+        log(`Cargando modelo... ${elapsed/1000}s`);
+
+        if (elapsed >= 60000) {
+          clearInterval(progressInterval);
+          reject(new Error('Timeout cargando modelo (60s). Intenta recargar o usa otro navegador.'));
+        }
+      }, 5000);
+    });
+
+    try {
+      STATE.model = await Promise.race([loadPromise, timeoutPromise]);
+      if (progressInterval) clearInterval(progressInterval);
+    } catch (err) {
+      if (progressInterval) clearInterval(progressInterval);
+      throw err;
+    }
     
     if (loadingElement) {
       loadingElement.classList.add('hidden');
@@ -106,17 +133,38 @@ export async function loadModel() {
     
   } catch (err) {
     log(`Error al cargar el modelo: ${err.message}`, 'error');
-    
+
     const statusElement = document.getElementById('status');
+    const loadingElement2 = document.getElementById('loading');
+
     if (statusElement) {
       statusElement.textContent = '⚠️ Error al cargar IA';
+      statusElement.innerHTML = `
+        ⚠️ Error al cargar IA<br>
+        <small style="font-size: 0.8em;">La IA está tardando demasiado. Puedes:</small><br>
+        <button id="btnSkipAI" style="margin-top: 8px; padding: 8px 16px; background: #02eef0; border: none; border-radius: 4px; cursor: pointer;">
+          ⏭️ Continuar sin IA (solo blockchain)
+        </button>
+      `;
+
+      // Añadir listener al botón
+      const skipBtn = document.getElementById('btnSkipAI');
+      if (skipBtn) {
+        skipBtn.onclick = () => {
+          log('Usuario decidió continuar sin IA');
+          if (statusElement) statusElement.textContent = '📱 Modo solo blockchain';
+          if (loadingElement2) loadingElement2.classList.add('hidden');
+          // No lanzar error, dejar que la app funcione sin IA
+        };
+      }
     }
-    
-    const loadingElement2 = document.getElementById('loading');
+
     if (loadingElement2) {
       loadingElement2.classList.add('hidden');
     }
-    throw err;
+
+    // NO lanzar error si el usuario puede saltar
+    // throw err;
   }
 }
 
