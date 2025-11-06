@@ -1,10 +1,15 @@
-﻿import { CONFIG, getPlantIdFromURL, STATE } from './config.js';
+﻿// ============================================
+// DATA MANAGER - BLOCKCHAIN + MAGIC.LINK
+// VERSION: SIMPLIFICADA (SIN CARGAR SDK)
+// ============================================
+
+import { CONFIG, getPlantIdFromURL, STATE } from './config.js';
 import { log } from './utils.js';
 
-// Magic.link API Key - CONFIGURADA ✅
+// Magic.link API Key
 const MAGIC_API_KEY = 'pk_live_37872478211D964B';
 
-// Infura API Key - CONFIGURADA ✅
+// Infura Sepolia
 const INFURA_KEY = 'f4ec683049b74beab43d0ec659c28f6a';
 const RPC_URL = 'https://sepolia.infura.io/v3/' + INFURA_KEY;
 
@@ -33,59 +38,37 @@ const FALLBACK_DATA = {
 };
 
 /**
- * INICIALIZA MAGIC.LINK CON SEPOLIA
+ * INICIALIZA MAGIC.LINK (ASUME QUE YA ESTA INYECTADO)
  */
 export async function initMagic() {
   if (magic) return magic;
   
-  log('[Magic.link] ✅ CONFIGURADO');
-  log('[Magic.link] API Key: pk_live_37872478211D964B');
-  log('[Magic.link] RPC: https://sepolia.infura.io/v3/f4ec683049b74beab43d0ec659c28f6a');
-  log('[Magic.link] Inicializando...');
+  log('[Magic.link] Verificando si SDK está disponible...');
+  
+  // Esperar a que Magic esté disponible
+  let attempts = 0;
+  while (!window.Magic && attempts < 20) {
+    await new Promise(r => setTimeout(r, 500));
+    attempts++;
+  }
   
   if (!window.Magic) {
-    log('[Magic.link] Cargando Magic SDK desde CDN...');
-    
-    return new Promise((resolve, reject) => {
-      const script = document.createElement('script');
-      script.src = 'https://cdn.jsdelivr.net/npm/@magic-sdk/admin@latest/dist/magic.js';
-      script.async = true;
-      
-      script.onload = () => {
-        log('[Magic.link] SDK cargado ✅');
-        
-        magic = new window.Magic(MAGIC_API_KEY, {
-          network: {
-            rpcUrl: RPC_URL,
-            chainId: 11155111
-          }
-        });
-        
-        log('[Magic.link] ✅ LISTO para Sepolia (chainId: 11155111)');
-        
-        provider = magic.rpcProvider;
-        resolve(magic);
-      };
-      
-      script.onerror = () => {
-        log('[Magic.link] ❌ Error cargando SDK', 'error');
-        reject(new Error('Error cargando Magic.link SDK'));
-      };
-      
-      document.head.appendChild(script);
-    });
-  } else {
-    magic = new window.Magic(MAGIC_API_KEY, {
-      network: {
-        rpcUrl: RPC_URL,
-        chainId: 11155111
-      }
-    });
-    
-    log('[Magic.link] ✅ Inicializado');
-    provider = magic.rpcProvider;
-    return magic;
+    throw new Error('Magic.link SDK no disponible. Asegúrate de que está cargado en index.html');
   }
+  
+  log('[Magic.link] ✅ SDK disponible');
+  
+  magic = new window.Magic(MAGIC_API_KEY, {
+    network: {
+      rpcUrl: RPC_URL,
+      chainId: 11155111
+    }
+  });
+  
+  log('[Magic.link] ✅ Inicializado con Sepolia');
+  
+  provider = magic.rpcProvider;
+  return magic;
 }
 
 /**
@@ -102,9 +85,13 @@ export async function loginWithMagic(email) {
     });
     
     log('[Magic.link] ✅ Login exitoso');
-    log('[Magic.link] 📬 Revisa tu email para el magic link');
     
     localStorage.setItem('magic_did_token', didToken);
+    
+    // Obtener dirección
+    const metadata = await magic.user.getMetadata();
+    log('[Magic.link] ✅ Tu dirección: ' + metadata.publicAddress);
+    console.log('IMPORTANTE - COPIA ESTA DIRECCION: ' + metadata.publicAddress);
     
     return didToken;
     
@@ -131,7 +118,7 @@ export async function getMagicUser() {
     return metadata;
     
   } catch (error) {
-    log('[Magic.link] Error obteniendo usuario: ' + error.message, 'error');
+    log('[Magic.link] Error: ' + error.message, 'error');
     return null;
   }
 }
@@ -146,7 +133,7 @@ export async function logoutMagic() {
     localStorage.removeItem('magic_did_token');
     log('[Magic.link] ✅ Logout exitoso');
   } catch (error) {
-    log('[Magic.link] Error en logout: ' + error.message, 'error');
+    log('[Magic.link] Error: ' + error.message, 'error');
   }
 }
 
@@ -155,12 +142,12 @@ export async function logoutMagic() {
  */
 async function connectAndGetContract() {
   try {
-    log('[Blockchain] ========== CONECTANDO A SEPOLIA ==========');
+    log('[Blockchain] Conectando a Sepolia...');
     
     magic = await initMagic();
     provider = magic.rpcProvider;
     
-    log('[Blockchain] ✅ Provider Magic.link conectado');
+    log('[Blockchain] ✅ Provider conectado');
     
     const ethersProvider = new ethers.providers.Web3Provider(provider, 'any');
     const signer = ethersProvider.getSigner();
@@ -168,13 +155,11 @@ async function connectAndGetContract() {
     log('[Blockchain] ✅ Signer obtenido');
     
     const network = await ethersProvider.getNetwork();
-    log('[Blockchain] Red actual: chainId ' + network.chainId);
+    log('[Blockchain] Red: chainId ' + network.chainId);
     
     if (network.chainId !== 11155111) {
-      throw new Error('No estamos en Sepolia. ChainId: ' + network.chainId);
+      throw new Error('No estamos en Sepolia');
     }
-    
-    log('[Blockchain] ✅ Red confirmada: SEPOLIA');
     
     const contract = new ethers.Contract(
       CONFIG.blockchain.contractAddress,
@@ -182,55 +167,43 @@ async function connectAndGetContract() {
       signer
     );
     
-    log('[Blockchain] ✅ Contrato inicializado');
-    log('[Blockchain] Dirección: ' + CONFIG.blockchain.contractAddress);
+    log('[Blockchain] ✅ Contrato listo');
     
     return contract;
     
   } catch (error) {
-    log('[Blockchain] ❌ Error conectando: ' + error.message, 'error');
-    if (error.stack) {
-      console.error('[Blockchain] Stack:', error.stack);
-    }
+    log('[Blockchain] ❌ Error: ' + error.message, 'error');
     throw error;
   }
 }
 
 /**
- * Guarda datos en blockchain - AUTOMATICO
+ * Guarda datos en blockchain
  */
 export async function savePlantData(plantId, data) {
   try {
-    log('[Blockchain] ========== INICIANDO GUARDADO ==========');
-    log('[Blockchain] PlantId: ' + plantId);
+    log('[Blockchain] Guardando...');
     
     const contract = await connectAndGetContract();
     const json = JSON.stringify(data);
     
-    log('[Blockchain] Datos: ' + json.substring(0, 100) + '...');
-    log('[Blockchain] 📤 Enviando transacción a SEPOLIA...');
+    log('[Blockchain] 📤 Enviando tx a Sepolia...');
     
-    // Magic.link FIRMA Y ENVIA AUTOMATICAMENTE
     const tx = await contract.setPlantData(plantId, json);
     
-    log('[Blockchain] ✅ Transacción enviada AUTOMATICAMENTE');
-    log('[Blockchain] 🔗 Hash: ' + tx.hash);
-    log('[Blockchain] 🔍 Etherscan: https://sepolia.etherscan.io/tx/' + tx.hash);
+    log('[Blockchain] ✅ Tx enviada');
+    log('[Blockchain] Hash: ' + tx.hash);
+    log('[Blockchain] https://sepolia.etherscan.io/tx/' + tx.hash);
     
-    log('[Blockchain] ⏳ Esperando confirmación (10-30 seg)...');
+    log('[Blockchain] ⏳ Esperando confirmación...');
     const receipt = await tx.wait();
     
     log('[Blockchain] ✅ CONFIRMADA en bloque: ' + receipt.blockNumber);
-    log('[Blockchain] ⛽ Gas usado: ' + receipt.gasUsed.toString());
-    log('[Blockchain] ========== ✅ GUARDADO EN BLOCKCHAIN ==========');
     
     return receipt;
     
   } catch (error) {
-    log('[Blockchain] ❌ Error guardando: ' + error.message, 'error');
-    if (error.stack) {
-      console.error('[Blockchain] Stack:', error.stack);
-    }
+    log('[Blockchain] ❌ Error: ' + error.message, 'error');
     throw error;
   }
 }
@@ -243,17 +216,14 @@ export async function loadPlantData(plantIndex) {
     const plantId = getPlantIdFromURL();
     const url = './data/' + encodeURIComponent(plantId) + '.json';
     
-    log('📂 Cargando datos de: ' + url);
-    
     const response = await fetch(url, { cache: 'no-store' });
     
     if (!response.ok) {
-      log('⚠️  Datos no encontrados, usando fallback', 'warn');
       return FALLBACK_DATA;
     }
     
     const data = await response.json();
-    log('✅ Datos cargados: ' + data.seedVariety);
+    log('✅ Datos: ' + data.seedVariety);
     
     plantDataCache.set(plantIndex, {
       data: data,
@@ -263,7 +233,6 @@ export async function loadPlantData(plantIndex) {
     return data;
     
   } catch (error) {
-    log('Error cargando datos: ' + error.message, 'warn');
     return FALLBACK_DATA;
   }
 }
@@ -274,25 +243,12 @@ export function getCachedPlantData(plantIndex) {
 
 export function clearPlantCache(plantIndex) {
   plantDataCache.delete(plantIndex);
-  log('🗑️  Cache limpiado para planta ' + plantIndex);
 }
 
 export async function preloadPlantData(count = 3) {
-  log('📥 Pre-cargando ' + count + ' plantas...');
-  
   const promises = [];
   for (let i = 0; i < count; i++) {
-    promises.push(
-      loadPlantData(i).catch(err => {
-        log('⚠️  Error pre-cargando planta ' + i + ': ' + err.message, 'warn');
-      })
-    );
+    promises.push(loadPlantData(i).catch(err => {}));
   }
-  
-  try {
-    await Promise.all(promises);
-    log('✅ Pre-carga completa');
-  } catch (error) {
-    log('Error en pre-carga: ' + error.message, 'warn');
-  }
+  await Promise.all(promises);
 }
