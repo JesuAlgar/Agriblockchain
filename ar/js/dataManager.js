@@ -1,6 +1,6 @@
 ﻿// ============================================
-// DATA MANAGER - BLOCKCHAIN + MAGIC.LINK
-// VERSION: FINAL FIX (SIN PROBLEMAS MIME/CORS)
+// DATA MANAGER - MAGIC.LINK + BLOCKCHAIN
+// VERSION: IFRAME (EVITA ERRORES DE SINTAXIS)
 // ============================================
 
 import { CONFIG, getPlantIdFromURL, STATE } from './config.js';
@@ -16,85 +16,105 @@ const plantDataCache = new Map();
 
 const FALLBACK_DATA = {
   eventType: "MONITOR",
-  eventId: "01FALLBACK000000000000000",
-  batchId: "01FALLBACK000000000000001",
-  lotCode: "DEMO-2025-10-10-FALLBACK",
+  eventId: "01FALLBACK",
+  batchId: "01FALLBACK",
+  lotCode: "DEMO",
   timestamp: new Date().toISOString(),
   recordedBy: "device-DEMO",
   fieldId: "DEMO-FIELD",
-  seed_LotId: "DEMO-SEED-001",
+  seed_LotId: "DEMO",
   seedVariety: "Demo Plant",
-  seedSupplier: "Demo Supplier",
+  seedSupplier: "Demo",
   seedTreatment: "demo",
   quantity_kg: 0.0,
-  plantingMethod: "demo-system",
+  plantingMethod: "demo",
   rowSpacing_cm: 0,
   plantingDepth_cm: 0.0,
   germinationRate_pct: 0
 };
 
 /**
- * INYECTA MAGIC.LINK VIA FETCH + BLOB
+ * ESPERAR A QUE MAGIC ESTÉ DISPONIBLE
  */
-async function injectMagicSDK() {
+async function waitForMagic(timeout = 10000) {
+  const start = Date.now();
+  while (!window.Magic) {
+    if (Date.now() - start > timeout) {
+      throw new Error('Timeout esperando Magic.link');
+    }
+    await new Promise(r => setTimeout(r, 100));
+  }
+  return window.Magic;
+}
+
+/**
+ * INYECTAR MAGIC VIA IFRAME
+ */
+async function setupMagicViaIframe() {
   return new Promise((resolve, reject) => {
     if (window.Magic) {
       resolve(window.Magic);
       return;
     }
 
-    log('[Magic.link] Inyectando SDK...');
+    log('[Magic.link] Inicializando via iframe...');
 
-    const CDN_URL = 'https://cdn.jsdelivr.net/npm/@magic-sdk/admin@latest/dist/magic.js';
+    // Crear iframe
+    const iframe = document.createElement('iframe');
+    iframe.style.display = 'none';
+    iframe.sandbox.add('allow-scripts');
+    iframe.sandbox.add('allow-same-origin');
 
-    fetch(CDN_URL)
-      .then(res => res.text())
-      .then(scriptText => {
-        log('[Magic.link] Script descargado');
+    iframe.onload = () => {
+      log('[Magic.link] Iframe cargado');
 
+      // Inyectar Magic en el iframe
+      const script = iframe.contentDocument.createElement('script');
+      script.src = 'https://cdn.jsdelivr.net/npm/@magic-sdk/admin@latest/dist/magic.js';
+      script.async = true;
+
+      script.onload = () => {
+        log('[Magic.link] ✅ Magic cargado en iframe');
+
+        // Copiar Magic al window principal
         try {
-          const blob = new Blob([scriptText], { type: 'application/javascript' });
-          const blobURL = URL.createObjectURL(blob);
-
-          const script = document.createElement('script');
-          script.src = blobURL;
-          script.async = true;
-
-          script.onload = () => {
-            log('[Magic.link] ✅ Inyectado');
-            URL.revokeObjectURL(blobURL);
-            
-            if (window.Magic) {
-              resolve(window.Magic);
-            } else {
-              setTimeout(() => {
-                if (window.Magic) {
-                  resolve(window.Magic);
-                } else {
-                  reject(new Error('Magic no disponible'));
-                }
-              }, 100);
-            }
-          };
-
-          script.onerror = () => {
-            reject(new Error('Error inyectando Magic'));
-          };
-
-          document.head.appendChild(script);
+          if (iframe.contentWindow.Magic) {
+            window.Magic = iframe.contentWindow.Magic;
+            log('[Magic.link] ✅ Magic disponible globalmente');
+            resolve(window.Magic);
+          } else {
+            setTimeout(() => {
+              if (iframe.contentWindow.Magic) {
+                window.Magic = iframe.contentWindow.Magic;
+                resolve(window.Magic);
+              } else {
+                reject(new Error('Magic no en iframe'));
+              }
+            }, 500);
+          }
         } catch (err) {
           reject(err);
         }
-      })
-      .catch(err => {
-        log('[Magic.link] ❌ Error: ' + err.message, 'error');
-        reject(err);
-      });
+      };
+
+      script.onerror = () => {
+        reject(new Error('Error cargando Magic en iframe'));
+      };
+
+      iframe.contentDocument.head.appendChild(script);
+    };
+
+    iframe.onerror = () => {
+      reject(new Error('Error iframe'));
+    };
+
+    iframe.src = 'about:blank';
+    document.head.appendChild(iframe);
   });
 }
 
 /**
- * INICIALIZA MAGIC
+ * INICIALIZA MAGIC - INTENTA MULTIPLES METODOS
  */
 export async function initMagic() {
   if (magic) return magic;
@@ -102,7 +122,17 @@ export async function initMagic() {
   try {
     log('[Magic.link] Inicializando...');
 
-    const Magic = await injectMagicSDK();
+    // Método 1: Si ya está disponible
+    if (window.Magic) {
+      log('[Magic.link] ✅ Magic ya disponible');
+    } else {
+      // Método 2: Setup via iframe
+      log('[Magic.link] Usando método iframe...');
+      await setupMagicViaIframe();
+    }
+
+    // Esperar a que Magic esté listo
+    const Magic = await waitForMagic();
 
     magic = new Magic(MAGIC_API_KEY, {
       network: {
@@ -111,7 +141,7 @@ export async function initMagic() {
       }
     });
 
-    log('[Magic.link] ✅ OK con Sepolia');
+    log('[Magic.link] ✅ Inicializado con Sepolia');
     provider = magic.rpcProvider;
     return magic;
 
@@ -132,14 +162,14 @@ export async function loginWithMagic(email) {
 
     const didToken = await magic.auth.loginWithMagicLink({ email });
 
-    log('[Magic.link] ✅ OK');
+    log('[Magic.link] ✅ Login OK');
     localStorage.setItem('magic_did_token', didToken);
 
     const metadata = await magic.user.getMetadata();
-    log('[Magic.link] ✅ Dir: ' + metadata.publicAddress);
+    log('[Magic.link] ✅ Dirección: ' + metadata.publicAddress);
     
     console.log('================================');
-    console.log('TU DIRECCION PARA FAUCET:');
+    console.log('COPIA PARA FAUCET:');
     console.log(metadata.publicAddress);
     console.log('================================');
 
@@ -180,11 +210,11 @@ export async function logoutMagic() {
 }
 
 /**
- * GET CONTRACT
+ * CONECTA A SEPOLIA
  */
 async function connectAndGetContract() {
   try {
-    log('[Blockchain] Conectando...');
+    log('[Blockchain] Conectando a Sepolia...');
 
     magic = await initMagic();
     provider = magic.rpcProvider;
@@ -196,7 +226,7 @@ async function connectAndGetContract() {
     log('[Blockchain] ChainId: ' + network.chainId);
 
     if (network.chainId !== 11155111) {
-      throw new Error('No es Sepolia');
+      throw new Error('No en Sepolia');
     }
 
     const contract = new ethers.Contract(
@@ -205,7 +235,7 @@ async function connectAndGetContract() {
       signer
     );
 
-    log('[Blockchain] ✅ OK');
+    log('[Blockchain] ✅ Contrato OK');
     return contract;
 
   } catch (error) {
@@ -215,7 +245,7 @@ async function connectAndGetContract() {
 }
 
 /**
- * SAVE TO BLOCKCHAIN
+ * GUARDA EN BLOCKCHAIN
  */
 export async function savePlantData(plantId, data) {
   try {
@@ -230,7 +260,7 @@ export async function savePlantData(plantId, data) {
     log('[Blockchain] https://sepolia.etherscan.io/tx/' + tx.hash);
 
     const receipt = await tx.wait();
-    log('[Blockchain] ✅ Bloque: ' + receipt.blockNumber);
+    log('[Blockchain] ✅ Confirmada bloque: ' + receipt.blockNumber);
 
     return receipt;
 
@@ -241,22 +271,17 @@ export async function savePlantData(plantId, data) {
 }
 
 /**
- * LOAD PLANT DATA
+ * CARGA DATOS
  */
 export async function loadPlantData(plantIndex) {
   try {
     const plantId = getPlantIdFromURL();
     const url = './data/' + encodeURIComponent(plantId) + '.json';
-
     const response = await fetch(url, { cache: 'no-store' });
-
     if (!response.ok) return FALLBACK_DATA;
-
     const data = await response.json();
     plantDataCache.set(plantIndex, { data, lastUpdate: Date.now() });
-
     return data;
-
   } catch (error) {
     return FALLBACK_DATA;
   }
