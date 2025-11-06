@@ -306,55 +306,7 @@ async function getSignerContract() {
  * NUEVA: Carga del MetaMask SDK desde archivo local vendorizado
  */
 async function __loadMetaMaskSDK() {
-  // Si ya está cargado, retornar
-  if (window.MetaMaskSDK) {
-    log('[MetaMask SDK] Ya está cargado');
-    return window.MetaMaskSDK;
-  }
-
-  // Si ya está en proceso de carga, esperar
-  if (window.__mmsdkLoading) {
-    log('[MetaMask SDK] Esperando carga en progreso...');
-    await window.__mmsdkLoading;
-    return window.MetaMaskSDK;
-  }
-
-  // Iniciar carga única
-  window.__mmsdkLoading = new Promise((resolve, reject) => {
-    const localPath = './assets/metamask-sdk.min.js';
-
-    log(`[MetaMask SDK] Cargando desde: ${localPath}`);
-
-    const script = document.createElement('script');
-    script.src = localPath;
-    script.async = true;
-
-    script.onload = () => {
-      if (window.MetaMaskSDK) {
-        log('[MetaMask SDK] ✅ Cargado exitosamente');
-        resolve(window.MetaMaskSDK);
-      } else {
-        const err = new Error('SDK cargado pero window.MetaMaskSDK no está definido');
-        log(`[MetaMask SDK] ❌ ${err.message}`, 'error');
-        reject(err);
-      }
-    };
-
-    script.onerror = () => {
-      const err = new Error(
-        `No se encontró ${localPath}. ` +
-        `Descarga el SDK desde https://github.com/MetaMask/metamask-sdk/releases ` +
-        `y colócalo en ar/assets/metamask-sdk.min.js`
-      );
-      log(`[MetaMask SDK] ❌ ${err.message}`, 'error');
-      reject(err);
-    };
-
-    document.head.appendChild(script);
-  });
-
-  await window.__mmsdkLoading;
-  return window.MetaMaskSDK;
+  throw new Error('MetaMask SDK no cargado. Incluye ./assets/metamask-sdk.min.js en index.html');
 }
 async function getSignerContractSDK() {
   if (typeof window === 'undefined') {
@@ -469,6 +421,7 @@ export async function savePlantData(plantId, data) {
     throw err;
   }
 }
+
 
 
 
