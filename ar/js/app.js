@@ -1,5 +1,5 @@
-﻿// ============================================
-// APLICACIÃ“N PRINCIPAL
+// ============================================
+// APLICACIÓN PRINCIPAL
 // ============================================
 
 import { CONFIG, STATE } from './config.js';
@@ -14,18 +14,18 @@ import { getPlantIdFromURL } from './config.js';
  * Inicializa los event listeners de los controles
  */
 function initControls() {
-  // BotÃ³n cambiar tema
+  // Botón cambiar tema
   const btnTheme = document.getElementById('btnTheme');
   if (btnTheme) {
     btnTheme.addEventListener('click', toggleTheme);
-    log('âœ“ Control de tema inicializado');
+    log('✓ Control de tema inicializado');
   }
 
-  // BotÃ³n pantalla completa
+  // Botón pantalla completa
   const btnFullscreen = document.getElementById('btnFullscreen');
   if (btnFullscreen) {
     btnFullscreen.addEventListener('click', toggleFullscreen);
-    log('âœ“ Control de pantalla completa inicializado');
+    log('✓ Control de pantalla completa inicializado');
   }
 }
 
@@ -68,7 +68,7 @@ function updateZoomIndicator() {
   }
 }
 
-// Nuevo: versiÃ³n simple del control de guardado
+// Nuevo: versión simple del control de guardado
 function initSaveControl2() {
   const btnSave = document.getElementById('btnSaveChain');
   if (!btnSave) return;
@@ -88,73 +88,118 @@ function initSaveControl2() {
 function registerServiceWorker() {
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('./sw.js')
-      .then(() => log('âœ“ Service Worker registrado'))
+      .then(() => log('✓ Service Worker registrado'))
       .catch(err => log(`Service Worker no disponible: ${err.message}`, 'warn'));
   }
 }
 
 /**
- * InicializaciÃ³n principal de la aplicaciÃ³n
+ * Inicialización principal de la aplicación
  */
 async function init() {
   try {
     log('=== Iniciando AR Planta IA ===');
-    
+
     // Obtener referencias a elementos del DOM
     const video = document.getElementById('camera');
     const canvas = document.getElementById('canvas');
     const container = document.getElementById('container');
-    
+
     if (!video || !canvas || !container) {
       throw new Error('Elementos del DOM no encontrados');
     }
-    
+
     // Guardar referencias en el estado global
     STATE.container = container;
-    
-    // â­ LIMPIAR paneles antiguos que puedan existir
+
+    // ⭐ LIMPIAR paneles antiguos que puedan existir
     document.querySelectorAll('.data-panel').forEach(panel => panel.remove());
-    log('âœ“ Paneles antiguos limpiados');
-    
+    log('✓ Paneles antiguos limpiados');
+
     // Paso 1: Inicializar controles
     log('1/5 Inicializando controles...');
     initControls();
     initZoomControls();
     initSaveControl2();
-    
+
     // Paso 2: Registrar Service Worker
     log('2/5 Registrando Service Worker...');
     registerServiceWorker();
-    
-    // Paso 3: Iniciar cÃ¡mara
-    log('3/5 Iniciando cÃ¡mara...');
-    await startCamera(video, canvas);
-    updateZoomIndicator();
-    
-    // Paso 4: Cargar modelo de IA
-    log('4/5 Cargando modelo de IA...');
-    await loadModel();
-    
-    // Paso 5: Pre-cargar datos (opcional, mejora rendimiento inicial)
-    log('5/5 Pre-cargando datos...');
-    await preloadPlantData(2); // Pre-cargar 2 plantas
-    
-    // Iniciar loop de detecciÃ³n
-    log('âœ“ InicializaciÃ³n completa. Iniciando detecciÃ³n...');
-    detect();
-    
+
+    // Paso 3: Iniciar cámara (OPCIONAL - no bloquea si falla)
+    log('3/5 Iniciando cámara...');
+    let cameraStarted = false;
+    try {
+      await startCamera(video, canvas);
+      updateZoomIndicator();
+      cameraStarted = true;
+      log('✓ Cámara iniciada correctamente');
+    } catch (cameraErr) {
+      log(`⚠️ No se pudo iniciar la cámara: ${cameraErr.message}`, 'warn');
+
+      // Mostrar botón "Skip camera" similar al "Skip AI"
+      const statusElement = document.getElementById('status');
+      const loadingElement = document.getElementById('loading');
+
+      if (statusElement) {
+        statusElement.innerHTML = `
+          ⚠️ Error al acceder a la cámara<br>
+          <small style="font-size: 0.8em;">No se pudo obtener acceso a la cámara. Puedes:</small><br>
+          <button id="btnSkipCamera" style="margin-top: 8px; padding: 8px 16px; background: #02eef0; border: none; border-radius: 4px; cursor: pointer;">
+            ⏭️ Continuar sin cámara (solo blockchain)
+          </button>
+        `;
+
+        // Añadir listener al botón
+        const skipBtn = document.getElementById('btnSkipCamera');
+        if (skipBtn) {
+          skipBtn.onclick = () => {
+            log('Usuario decidió continuar sin cámara');
+            if (statusElement) statusElement.textContent = '📱 Modo solo blockchain';
+            if (loadingElement) loadingElement.classList.add('hidden');
+
+            // Continuar sin cámara ni IA
+            log('📱 Modo solo blockchain activo - Pre-cargando datos...');
+            preloadPlantData(1).then(() => {
+              log('✓ Datos pre-cargados. App lista (sin cámara/IA).');
+            }).catch(err => {
+              log(`Error pre-cargando datos: ${err.message}`, 'error');
+            });
+          };
+        }
+      }
+
+      // Esperar decisión del usuario - NO continuar automáticamente
+      return;
+    }
+
+    // Solo continuar con IA si la cámara funciona
+    if (cameraStarted) {
+      // Paso 4: Cargar modelo de IA
+      log('4/5 Cargando modelo de IA...');
+      await loadModel();
+
+      // Paso 5: Pre-cargar datos (opcional, mejora rendimiento inicial)
+      log('5/5 Pre-cargando datos...');
+      await preloadPlantData(2); // Pre-cargar 2 plantas
+
+      // Iniciar loop de detección
+      log('✓ Inicialización completa. Iniciando detección...');
+      detect();
+    }
+
   } catch (err) {
-    log(`Error crÃ­tico en inicializaciÃ³n: ${err.message}`, 'error');
-    
+    log(`Error crítico en inicialización: ${err.message}`, 'error');
+
     // Mostrar error en UI
     const statusElement = document.getElementById('status');
     if (statusElement) {
-      statusElement.textContent = `âš ï¸ Error: ${err.message}`;
+      statusElement.textContent = `⚠️ Error: ${err.message}`;
     }
   }
 }
 
-// Iniciar aplicaciÃ³n cuando el DOM estÃ© listo
+// Iniciar aplicación cuando el DOM esté listo
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', init);
 } else {
@@ -194,7 +239,7 @@ async function openSaveModal() {
   const cancelBtn = document.getElementById('btnCancelSave');
   if (!modal || !form || !cancelBtn) return;
 
-  // Obtener datos actuales (de cachÃ© o cargÃ¡ndolos)
+  // Obtener datos actuales (de caché o cargándolos)
   let data = getCachedPlantData(0)?.data;
   if (!data) {
     try { data = await loadPlantData(0); } catch {}
@@ -298,6 +343,5 @@ async function openSaveModal() {
     }
   };
 }
-
 
 
