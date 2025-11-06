@@ -3,7 +3,7 @@
 
 set -e
 
-SDK_VERSION="0.28.0"
+SDK_VERSION="latest"
 SDK_DIR="./assets"
 SDK_FILE="metamask-sdk.min.js"
 TEMP_DIR="/tmp/metamask-sdk-download"
@@ -51,22 +51,22 @@ if command -v npm &> /dev/null; then
         exit 1
     fi
 else
-    # Opción 2: Descargar desde unpkg CDN (fallback)
-    echo "⚠️  npm no disponible, intentando descarga directa desde CDN..."
+    # Opción 2: Descargar desde CDN oficial de MetaMask (fallback)
+    echo "⚠️  npm no disponible, intentando descarga directa desde CDN oficial..."
+
+    SDK_CDN_URL="https://c0f4f41c-2f55-4863-921b-sdk-docs.github.io/cdn/metamask-sdk.js"
 
     if command -v curl &> /dev/null; then
-        curl -L "https://unpkg.com/@metamask/sdk@$SDK_VERSION/dist/browser/umd/metamask-sdk.min.js" \
-             -o "$SDK_DIR/$SDK_FILE"
+        curl -L "$SDK_CDN_URL" -o "$SDK_DIR/$SDK_FILE"
         echo "✅ SDK descargado exitosamente vía curl"
     elif command -v wget &> /dev/null; then
-        wget "https://unpkg.com/@metamask/sdk@$SDK_VERSION/dist/browser/umd/metamask-sdk.min.js" \
-             -O "$SDK_DIR/$SDK_FILE"
+        wget "$SDK_CDN_URL" -O "$SDK_DIR/$SDK_FILE"
         echo "✅ SDK descargado exitosamente vía wget"
     else
         echo "❌ No se encontró npm, curl ni wget"
         echo ""
         echo "Por favor, descarga manualmente desde:"
-        echo "https://github.com/MetaMask/metamask-sdk/releases"
+        echo "$SDK_CDN_URL"
         echo ""
         echo "Y coloca el archivo en: $SDK_DIR/$SDK_FILE"
         exit 1

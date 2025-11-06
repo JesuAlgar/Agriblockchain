@@ -3,7 +3,7 @@
 
 $ErrorActionPreference = "Stop"
 
-$SDK_VERSION = "0.28.0"
+$SDK_VERSION = "latest"
 $SDK_DIR = ".\assets"
 $SDK_FILE = "metamask-sdk.min.js"
 $SDK_PATH = Join-Path $SDK_DIR $SDK_FILE
@@ -64,10 +64,10 @@ if ($npmPath) {
         exit 1
     }
 } else {
-    # Opción 2: Descargar desde unpkg CDN (fallback)
-    Write-Host "⚠️  npm no disponible, intentando descarga directa desde CDN..." -ForegroundColor Yellow
+    # Opción 2: Descargar desde CDN oficial de MetaMask (fallback)
+    Write-Host "⚠️  npm no disponible, intentando descarga directa desde CDN oficial..." -ForegroundColor Yellow
 
-    $url = "https://unpkg.com/@metamask/sdk@$SDK_VERSION/dist/browser/umd/metamask-sdk.min.js"
+    $url = "https://c0f4f41c-2f55-4863-921b-sdk-docs.github.io/cdn/metamask-sdk.js"
 
     try {
         Invoke-WebRequest -Uri $url -OutFile $SDK_PATH -UseBasicParsing
@@ -76,7 +76,7 @@ if ($npmPath) {
         Write-Host "❌ Error al descargar desde CDN: $_" -ForegroundColor Red
         Write-Host ""
         Write-Host "Por favor, descarga manualmente desde:" -ForegroundColor Yellow
-        Write-Host "https://github.com/MetaMask/metamask-sdk/releases" -ForegroundColor Yellow
+        Write-Host $url -ForegroundColor Yellow
         Write-Host ""
         Write-Host "Y coloca el archivo en: $SDK_PATH" -ForegroundColor Yellow
         exit 1
