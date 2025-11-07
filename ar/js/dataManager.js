@@ -169,26 +169,58 @@ async function getSignerAndContract() {
         icons: iconAbs ? [iconAbs] : []
       };
 
-      const wcProvider = await initFn.call(W, {
-        projectId: CONFIG.walletConnect.projectId,
-        showQrModal: true,
-        chains: [chainId],
-        optionalChains: [chainId],
-        methods: [
-          'eth_sendTransaction',
-          'eth_sign',
-          'personal_sign',
-          'eth_signTypedData',
-          'eth_signTypedData_v4'
-        ],
-        optionalMethods: [
-          'wallet_switchEthereumChain',
-          'wallet_addEthereumChain'
-        ],
-        events: ['chainChanged', 'accountsChanged'],
-        metadata: wcMetadata,
-        rpcMap: { [chainId]: network.rpcUrl }
-      });
+      let wcProvider;
+      try {
+        wcProvider = await initFn.call(W, {
+          projectId: CONFIG.walletConnect.projectId,
+          showQrModal: true,
+          // 1º intento: conectar en mainnet y pedir Sepolia como opcional
+          chains: [1],
+          optionalChains: [chainId],
+          methods: [
+            'eth_sendTransaction',
+            'eth_sign',
+            'personal_sign',
+            'eth_signTypedData',
+            'eth_signTypedData_v4'
+          ],
+          optionalMethods: [
+            'wallet_switchEthereumChain',
+            'wallet_addEthereumChain'
+          ],
+          events: ['chainChanged', 'accountsChanged'],
+          metadata: wcMetadata,
+          rpcMap: { 1: 'https://cloudflare-eth.com', [chainId]: network.rpcUrl }
+        });
+      } catch (initErr) {
+        const msg = String(initErr?.message || initErr || '');
+        // 2º intento: si la wallet soporta testnets, conectar directo a Sepolia
+        if (msg.includes('Requested chains are not supported') || msg.includes('no matching key') || msg.includes('proposal')) {
+          log('[Blockchain] Reintentando sesión directamente en Sepolia...', 'warn');
+          wcProvider = await initFn.call(W, {
+            projectId: CONFIG.walletConnect.projectId,
+            showQrModal: true,
+            chains: [chainId],
+            optionalChains: [1],
+            methods: [
+              'eth_sendTransaction',
+              'eth_sign',
+              'personal_sign',
+              'eth_signTypedData',
+              'eth_signTypedData_v4'
+            ],
+            optionalMethods: [
+              'wallet_switchEthereumChain',
+              'wallet_addEthereumChain'
+            ],
+            events: ['chainChanged', 'accountsChanged'],
+            metadata: wcMetadata,
+            rpcMap: { 1: 'https://cloudflare-eth.com', [chainId]: network.rpcUrl }
+          });
+        } else {
+          throw initErr;
+        }
+      }
       if (!wcProvider) {
         throw new Error('WalletConnect init() devolvió undefined');
       }
@@ -202,6 +234,34 @@ async function getSignerAndContract() {
         await wcProvider.request({ method: 'eth_requestAccounts' });
       } else {
         log('[Blockchain] Provider obtenido, pero no expone enable/request', 'warn');
+      }
+
+      // Intentar cambiar a la red objetivo (Sepolia)
+      try {
+        await wcProvider.request({
+          method: 'wallet_switchEthereumChain',
+          params: [{ chainId: network.chainIdHex }]
+        });
+      } catch (switchError) {
+        // Si la red no existe en la wallet, intentar agregarla
+        if (switchError && (switchError.code === 4902 || String(switchError.message||'').includes('Unrecognized chain ID'))) {
+          try {
+            await wcProvider.request({
+              method: 'wallet_addEthereumChain',
+              params: [{
+                chainId: network.chainIdHex,
+                chainName: network.name,
+                rpcUrls: [network.rpcUrl],
+                nativeCurrency: { name: 'Sepolia ETH', symbol: 'ETH', decimals: 18 },
+                blockExplorerUrls: ['https://sepolia.etherscan.io']
+              }]
+            });
+          } catch (addErr) {
+            log('[Blockchain] No se pudo agregar la red en la wallet: ' + (addErr?.message||addErr), 'warn');
+          }
+        } else {
+          log('[Blockchain] No se pudo cambiar de red: ' + (switchError?.message||switchError), 'warn');
+        }
       }
 
       log('[Blockchain] ✓ Conectado con wallet');
