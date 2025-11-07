@@ -649,6 +649,60 @@ body {
 }
 
 /* ============================================
+   PANTALLA COMPLETA SIMULADA
+   ============================================ */
+
+/* Modo fullscreen simulado cuando la API nativa no está disponible */
+body.simulated-fullscreen {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+  z-index: 999999;
+}
+
+body.simulated-fullscreen #container {
+  width: 100vw;
+  height: 100vh;
+}
+
+/* Ocultar elementos de navegación del navegador en modo simulado */
+body.simulated-fullscreen .header {
+  position: fixed;
+  z-index: 1000000;
+}
+
+/* Asegurar que el video y canvas ocupen toda la pantalla */
+body.simulated-fullscreen #camera,
+body.simulated-fullscreen #canvas {
+  width: 100vw !important;
+  height: 100vh !important;
+}
+
+/* Soporte para navegadores con prefijos */
+:-webkit-full-screen {
+  width: 100vw;
+  height: 100vh;
+}
+
+:-moz-full-screen {
+  width: 100vw;
+  height: 100vh;
+}
+
+:-ms-fullscreen {
+  width: 100vw;
+  height: 100vh;
+}
+
+:fullscreen {
+  width: 100vw;
+  height: 100vh;
+}
+
+/* ============================================
    IMPRESIÓN
    ============================================ */
 
@@ -656,7 +710,7 @@ body {
   #camera, #canvas, .btn-fullscreen, .instructions {
     display: none !important;
   }
-  
+
   .data-panel {
     position: static !important;
     max-height: none !important;

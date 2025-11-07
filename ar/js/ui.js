@@ -387,12 +387,149 @@ export function toggleTheme() {
 }
 
 /**
- * Activa/desactiva pantalla completa
+ * Activa/desactiva pantalla completa (compatible con móviles y Trust Wallet)
  */
 export function toggleFullscreen() {
-  if (!document.fullscreenElement) {
-    document.documentElement.requestFullscreen();
-  } else {
-    document.exitFullscreen();
+  const elem = document.documentElement;
+
+  // Detectar si ya estamos en pantalla completa (soporta prefijos)
+  const isFullscreen =
+    document.fullscreenElement ||
+    document.webkitFullscreenElement ||
+    document.mozFullScreenElement ||
+    document.msFullscreenElement ||
+    document.body.classList.contains('simulated-fullscreen');
+
+  console.log('[Fullscreen] Estado actual:', isFullscreen ? 'Activado' : 'Desactivado');
+
+  try {
+    if (!isFullscreen) {
+      // Intentar entrar en pantalla completa con diferentes métodos
+      if (elem.requestFullscreen) {
+        elem.requestFullscreen()
+          .then(() => {
+            console.log('[Fullscreen] ✓ Modo nativo activado');
+            updateFullscreenButton(true);
+          })
+          .catch(err => {
+            console.warn('[Fullscreen] requestFullscreen falló:', err.message);
+            // Fallback a modo simulado
+            simulateFullscreen(true);
+            showAlert('Pantalla completa simulada', 'info');
+          });
+      } else if (elem.webkitRequestFullscreen) {
+        // Safari y iOS
+        elem.webkitRequestFullscreen();
+        console.log('[Fullscreen] ✓ Modo webkit activado');
+        updateFullscreenButton(true);
+      } else if (elem.webkitEnterFullscreen) {
+        // iOS más antiguo
+        elem.webkitEnterFullscreen();
+        console.log('[Fullscreen] ✓ Modo webkit enter activado');
+        updateFullscreenButton(true);
+      } else if (elem.mozRequestFullScreen) {
+        // Firefox
+        elem.mozRequestFullScreen();
+        console.log('[Fullscreen] ✓ Modo moz activado');
+        updateFullscreenButton(true);
+      } else if (elem.msRequestFullscreen) {
+        // IE/Edge
+        elem.msRequestFullscreen();
+        console.log('[Fullscreen] ✓ Modo ms activado');
+        updateFullscreenButton(true);
+      } else {
+        // Si nada funciona, simular fullscreen con CSS
+        console.log('[Fullscreen] Usando modo simulado');
+        simulateFullscreen(true);
+        showAlert('Modo pantalla completa activado', 'success');
+      }
+    } else {
+      // Salir de pantalla completa
+      if (document.exitFullscreen) {
+        document.exitFullscreen()
+          .then(() => {
+            console.log('[Fullscreen] ✓ Saliendo del modo nativo');
+            updateFullscreenButton(false);
+          })
+          .catch(err => {
+            console.warn('[Fullscreen] exitFullscreen falló:', err.message);
+          });
+      } else if (document.webkitExitFullscreen) {
+        document.webkitExitFullscreen();
+        updateFullscreenButton(false);
+      } else if (document.mozCancelFullScreen) {
+        document.mozCancelFullScreen();
+        updateFullscreenButton(false);
+      } else if (document.msExitFullscreen) {
+        document.msExitFullscreen();
+        updateFullscreenButton(false);
+      } else {
+        // Salir del modo simulado
+        simulateFullscreen(false);
+      }
+    }
+  } catch (err) {
+    console.error('[Fullscreen] Error:', err);
+    // Fallback: usar modo simulado
+    const isSimulated = document.body.classList.contains('simulated-fullscreen');
+    simulateFullscreen(!isSimulated);
   }
+}
+
+/**
+ * Actualiza el botón de fullscreen
+ */
+function updateFullscreenButton(isFullscreen) {
+  const btn = document.getElementById('btnFullscreen');
+  if (btn) {
+    btn.textContent = isFullscreen ? 'Salir Fullscreen' : 'Fullscreen';
+    btn.title = isFullscreen ? 'Salir de pantalla completa' : 'Pantalla completa';
+  }
+}
+
+/**
+ * Simula pantalla completa con CSS cuando la API no está disponible
+ */
+function simulateFullscreen(enable) {
+  if (enable) {
+    console.log('[Fullscreen] Activando modo simulado CSS');
+    document.body.classList.add('simulated-fullscreen');
+    // Ocultar barra de direcciones en móviles
+    setTimeout(() => window.scrollTo(0, 1), 100);
+    updateFullscreenButton(true);
+  } else {
+    console.log('[Fullscreen] Desactivando modo simulado CSS');
+    document.body.classList.remove('simulated-fullscreen');
+    updateFullscreenButton(false);
+  }
+}
+
+/**
+ * Listener para cambios de estado de fullscreen
+ */
+if (typeof document !== 'undefined') {
+  // Escuchar eventos de fullscreen para actualizar el botón
+  document.addEventListener('fullscreenchange', () => {
+    const isFullscreen = !!document.fullscreenElement;
+    console.log('[Fullscreen] fullscreenchange:', isFullscreen);
+    updateFullscreenButton(isFullscreen);
+  });
+
+  document.addEventListener('webkitfullscreenchange', () => {
+    const isFullscreen = !!document.webkitFullscreenElement;
+    console.log('[Fullscreen] webkitfullscreenchange:', isFullscreen);
+    updateFullscreenButton(isFullscreen);
+  });
+
+  document.addEventListener('mozfullscreenchange', () => {
+    const isFullscreen = !!document.mozFullScreenElement;
+    console.log('[Fullscreen] mozfullscreenchange:', isFullscreen);
+    updateFullscreenButton(isFullscreen);
+  });
+
+  document.addEventListener('msfullscreenchange', () => {
+    const isFullscreen = !!document.msFullscreenElement;
+    console.log('[Fullscreen] msfullscreenchange:', isFullscreen);
+    updateFullscreenButton(isFullscreen);
+  });
 }
