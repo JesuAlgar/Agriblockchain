@@ -96,8 +96,7 @@ body.simulated-fullscreen {
 }
 
 /* Ocultar cabecera en modo pantalla completa (nativo o simulado) */
-body.is-fullscreen .header,
-body.simulated-fullscreen .header {
+body.is-fullscreen .header {
   display: none !important;
 }
 

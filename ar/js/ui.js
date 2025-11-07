@@ -393,7 +393,7 @@ export function toggleFullscreen() {
   const d = document;
   const elements = [d.documentElement, d.body, d.getElementById('container')];
 
-  const isFS = !!(d.fullscreenElement || d.webkitFullscreenElement || d.mozFullScreenElement || d.msFullscreenElement || document.body.classList.contains('simulated-fullscreen'));
+  const isFS = !!(d.fullscreenElement || d.webkitFullscreenElement || d.mozFullScreenElement || d.msFullscreenElement);
   console.log('[Fullscreen] Estado actual:', isFS ? 'Activado' : 'Desactivado');
 
   const tryEnter = () => {
@@ -409,12 +409,12 @@ export function toggleFullscreen() {
         console.warn('[Fullscreen] start error:', e?.message);
       }
     }
-    // Comprobación post-intento: si no entró, simular tras un pequeño delay
+    // Comprobación post-intento: si no entró, avisar
     setTimeout(() => {
       const nowFS = !!(d.fullscreenElement || d.webkitFullscreenElement || d.mozFullScreenElement || d.msFullscreenElement);
       if (!nowFS) {
-        console.log('[Fullscreen] No se pudo activar nativo, usando simulado');
-        simulateFullscreen(true);
+        console.log('[Fullscreen] No se pudo activar pantalla completa nativa en este navegador');
+        try { showAlert('Este navegador no permite pantalla completa nativa aquí', 'warning'); } catch {}
       } else {
         updateFullscreenButton(true);
       }
@@ -427,7 +427,9 @@ export function toggleFullscreen() {
     try { if (d.webkitExitFullscreen) { d.webkitExitFullscreen(); exited = true; } } catch {}
     try { if (d.mozCancelFullScreen) { d.mozCancelFullScreen(); exited = true; } } catch {}
     try { if (d.msExitFullscreen) { d.msExitFullscreen(); exited = true; } } catch {}
-    if (!exited) simulateFullscreen(false);
+    if (!exited) {
+      // No hay API para salir, no hacer nada extra
+    }
   };
 
   if (!isFS) {
