@@ -29,7 +29,7 @@ export const CONFIG = {
   // ConfiguraciÃ³n del modelo de IA
   model: {
     base: 'mobilenet_v2',
-    forceWasmOnMobile: true,
+    forceWasmOnMobile: false,
     
     // â­ EXPANDIDO: Ahora detecta PLANTAS, ÃRBOLES y ARBUSTOS
     // Clases que detecta COCO-SSD

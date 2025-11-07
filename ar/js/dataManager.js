@@ -225,7 +225,28 @@ async function getSignerAndContract() {
         throw new Error('WalletConnect init() devolvió undefined');
       }
 
-      // Habilitar sesión/cuentas
+      // Habilitar sesión/cuentas (asegurando que la página tiene foco para evitar 'Document does not have focus')
+      const ensureVisible = () => new Promise(resolve => {
+        try {
+          if (typeof document === 'undefined') return resolve();
+          if (document.visibilityState === 'visible') return resolve();
+          const onVis = () => {
+            if (document.visibilityState === 'visible') {
+              document.removeEventListener('visibilitychange', onVis);
+              resolve();
+            }
+          };
+          document.addEventListener('visibilitychange', onVis);
+          // Seguridad: resolver tras 2s por si el evento no llega
+          setTimeout(() => {
+            document.removeEventListener('visibilitychange', onVis);
+            resolve();
+          }, 2000);
+        } catch { resolve(); }
+      });
+
+      await ensureVisible();
+
       if (typeof wcProvider.enable === 'function') {
         log('[Blockchain] Solicitando conexión con wallet (enable)...');
         await wcProvider.enable();
