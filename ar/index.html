@@ -36,8 +36,7 @@
     window.process = window.process || { env: {} };
   </script>
 
-  <!-- WalletConnect v2 Ethereum Provider UMD (una sola carga para evitar duplicados) -->
-  <script src="https://unpkg.com/@walletconnect/ethereum-provider@2.16.1/dist/index.umd.js"></script>
+  <!-- WalletConnect se cargará dinámicamente al usar BC (evita duplicados) -->
   <script>
     // Normalizar nombre global del UMD en distintos builds
     (function() {
@@ -55,20 +54,27 @@
     window.__ensureWCLoaded = function ensureWCLoaded() {
       return new Promise((resolve) => {
         try {
-          if (window.__wcLoaded || window.WalletConnectProvider || window.EthereumProvider || window.WalletConnectEthereumProvider) {
+          // Ya cargado si existe provider o si los web components del modal están definidos
+          const wcDefined = !!(
+            window.WalletConnectProvider || window.EthereumProvider || window.WalletConnectEthereumProvider ||
+            (window.customElements && (customElements.get('wcm-button') || customElements.get('wcm-modal')))
+          );
+          if (window.__wcLoaded || wcDefined) {
             window.__wcLoaded = true;
             return resolve(true);
           }
           if (window.__wcLoading) {
             // Esperar a que termine otro intento en curso
             const iv = setInterval(() => {
-              if (window.__wcLoaded || window.WalletConnectProvider || window.EthereumProvider || window.WalletConnectEthereumProvider) {
+              const ok = window.__wcLoaded || window.WalletConnectProvider || window.EthereumProvider || window.WalletConnectEthereumProvider ||
+                (window.customElements && (customElements.get('wcm-button') || customElements.get('wcm-modal')));
+              if (ok) {
                 clearInterval(iv);
                 window.__wcLoaded = true;
                 resolve(true);
               }
             }, 200);
-            setTimeout(() => { clearInterval(iv); resolve(!!(window.WalletConnectProvider || window.EthereumProvider)); }, 4000);
+            setTimeout(() => { clearInterval(iv); resolve(!!(window.WalletConnectProvider || window.EthereumProvider || window.WalletConnectEthereumProvider)); }, 4000);
             return;
           }
           window.__wcLoading = true;
