@@ -14,18 +14,39 @@ import { log } from './utils.js';
 export async function startCamera(videoElement, canvasElement) {
   try {
     log('Requesting camera access...');
-    
-    // Camera constraints - flexible
+
+    // Detectar si estamos en Trust Wallet
+    const isTrustWallet = window.ethereum?.isTrust || /Trust/i.test(navigator.userAgent);
+    if (isTrustWallet) {
+      log('[Camera] Detectado Trust Wallet DApp Browser');
+    }
+
+    // Verificar que getUserMedia está disponible
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      throw new Error('Tu navegador no soporta acceso a cámara. Usa Chrome, Firefox o Safari actualizado.');
+    }
+
+    // Camera constraints - muy flexibles para Trust Wallet
     const constraints = {
       video: {
-        facingMode: { ideal: CONFIG.camera.facingMode || 'environment' },
-        width: { ideal: CONFIG.camera.idealWidth },
-        height: { ideal: CONFIG.camera.idealHeight }
+        facingMode: CONFIG.camera.facingMode || 'environment',
+        // Para Trust Wallet, usar constraints menos estrictas
+        ...(isTrustWallet ? {} : {
+          width: { ideal: CONFIG.camera.idealWidth },
+          height: { ideal: CONFIG.camera.idealHeight }
+        })
       },
       audio: false
     };
 
+    log('[Camera] Solicitando permisos con constraints:', JSON.stringify(constraints));
     const stream = await navigator.mediaDevices.getUserMedia(constraints);
+
+    if (!stream || stream.getTracks().length === 0) {
+      throw new Error('No se pudo obtener stream de cámara');
+    }
+
+    log('[Camera] ✓ Stream obtenido, asignando a video element...');
     videoElement.srcObject = stream;
     
     // Wait for video to be ready
@@ -62,15 +83,95 @@ export async function startCamera(videoElement, canvasElement) {
     STATE.stream = stream;
     
   } catch (err) {
-    log(`[Camera] Error: ${err.message}`, 'error');
-    
+    log(`[Camera] Error: ${err.name} - ${err.message}`, 'error');
+
+    // Mensajes de error específicos
+    let errorMsg = 'Error al acceder a la cámara';
+    let detailedMsg = '';
+
+    if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
+      errorMsg = 'Permisos de cámara denegados';
+      detailedMsg = 'Por favor, permite el acceso a la cámara en la configuración de tu navegador/wallet';
+
+      // Instrucciones específicas para Trust Wallet
+      const isTrustWallet = window.ethereum?.isTrust || /Trust/i.test(navigator.userAgent);
+      if (isTrustWallet) {
+        detailedMsg += '\n\n📱 Trust Wallet:\n1. Ve a Configuración del dispositivo\n2. Apps → Trust Wallet → Permisos\n3. Activa "Cámara"\n4. Recarga esta página';
+      }
+    } else if (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError') {
+      errorMsg = 'No se encontró cámara';
+      detailedMsg = 'Tu dispositivo no tiene cámara o no está disponible';
+    } else if (err.name === 'NotReadableError' || err.name === 'TrackStartError') {
+      errorMsg = 'Cámara en uso';
+      detailedMsg = 'La cámara está siendo usada por otra aplicación. Cierra otras apps que usen la cámara.';
+    } else if (err.name === 'OverconstrainedError') {
+      errorMsg = 'Configuración de cámara no soportada';
+      detailedMsg = 'Tu cámara no soporta la configuración solicitada. Intentando con configuración básica...';
+
+      // Retry con constraints mínimas
+      log('[Camera] Reintentando con constraints básicas...');
+      try {
+        const basicConstraints = { video: true, audio: false };
+        const stream = await navigator.mediaDevices.getUserMedia(basicConstraints);
+        videoElement.srcObject = stream;
+
+        await new Promise(resolve => {
+          videoElement.onloadedmetadata = () => {
+            videoElement.play();
+            resolve();
+          };
+        });
+
+        canvasElement.width = videoElement.videoWidth;
+        canvasElement.height = videoElement.videoHeight;
+        STATE.video = videoElement;
+        STATE.canvas = canvasElement;
+        STATE.ctx = canvasElement.getContext('2d');
+        STATE.stream = stream;
+
+        log('[Camera] ✓ Cámara iniciada con configuración básica');
+        return; // Éxito
+      } catch (retryErr) {
+        log(`[Camera] Retry falló: ${retryErr.message}`, 'error');
+      }
+    } else if (err.name === 'SecurityError') {
+      errorMsg = 'Error de seguridad';
+      detailedMsg = 'Esta página debe cargarse con HTTPS para acceder a la cámara';
+    }
+
+    log(`[Camera] Error detallado: ${errorMsg} - ${detailedMsg}`, 'error');
+
     // Update UI with error
     const status = document.getElementById('status');
     if (status) {
-      status.textContent = 'Error: Could not access camera';
+      status.textContent = errorMsg;
       status.classList.remove('detecting');
+      status.style.color = '#ff4444';
     }
-    
+
+    // Mostrar instrucciones en pantalla
+    const instructions = document.getElementById('instructions');
+    if (instructions) {
+      instructions.innerHTML = `
+        <strong style="color: #ff4444">${errorMsg}</strong><br>
+        <small style="margin-top: 8px; display: block">${detailedMsg}</small>
+        <button id="retryCameraBtn" style="margin-top: 12px; padding: 8px 16px; background: #02eef0; border: none; border-radius: 4px; cursor: pointer">
+          🔄 Reintentar
+        </button>
+      `;
+      instructions.style.display = 'block';
+
+      // Agregar listener para reintentar
+      setTimeout(() => {
+        const retryBtn = document.getElementById('retryCameraBtn');
+        if (retryBtn) {
+          retryBtn.onclick = () => {
+            location.reload();
+          };
+        }
+      }, 100);
+    }
+
     throw err;
   }
 }

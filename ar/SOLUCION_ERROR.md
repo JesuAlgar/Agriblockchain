@@ -1,6 +1,8 @@
-# 🔧 Solución al error: "window.WalletConnectProvider: false"
+# 🔧 Soluciones completas: Trust Wallet + Cámara
 
-## El problema
+## Problemas comunes
+
+### 1️⃣ Error: "window.WalletConnectProvider: false"
 
 Viste este error en la consola:
 ```
@@ -137,3 +139,62 @@ Si ves `[window.ethereum] ✓ DISPONIBLE`, ¡ya está funcionando!
 | PC con MetaMask extension | ✅ | ❌ (no necesario) | ✅ SÍ |
 
 **La forma más fácil**: Trust Wallet DApp Browser + Netlify HTTPS = ✅ Funciona siempre
+
+---
+
+## 2️⃣ Error: "Cámara no funciona en Trust Wallet"
+
+### El problema
+La cámara no se activa cuando abres la app desde Trust Wallet DApp Browser.
+
+### Causa
+Trust Wallet no tiene permisos de cámara en tu sistema operativo.
+
+### ✅ SOLUCIÓN RÁPIDA
+
+#### Android:
+1. **Configuración** → **Apps** → **Trust Wallet**
+2. **Permisos** → **Cámara** → **Permitir**
+3. Reinicia Trust Wallet
+4. Abre la app de nuevo
+
+#### iOS:
+1. **Configuración** → **Trust Wallet**
+2. **Cámara** → Activar (verde)
+3. Reinicia Trust Wallet
+4. Abre la app de nuevo
+
+### 📖 Ver guía detallada
+Lee el archivo **[CAMARA_TRUST_WALLET.md](CAMARA_TRUST_WALLET.md)** para:
+- Instrucciones paso a paso con capturas
+- Solución de errores específicos
+- Alternativas si no funciona
+- Debugging de problemas
+
+### Alternativas si no funciona:
+1. **MetaMask Mobile** (mejor soporte de cámara)
+2. **Escritorio + MetaMask Extension** (más fácil para desarrollo)
+3. **Chrome móvil** (solo para cámara, blockchain por QR)
+
+---
+
+## 🎯 Resumen: Configuración perfecta
+
+Para que TODO funcione (cámara + blockchain):
+
+1. ✅ **Usa HTTPS** (Netlify)
+2. ✅ **Abre desde Trust Wallet DApp Browser**
+3. ✅ **Habilita permisos de cámara** en configuración del teléfono
+4. ✅ **Permite cámara** cuando el navegador lo pida
+5. ✅ **Conecta wallet** cuando presiones "BC"
+6. ✅ **Cambia a red Sepolia** cuando Trust Wallet lo pida
+
+Si sigues estos pasos, todo funcionará perfectamente.
+
+---
+
+## 📚 Documentación completa
+
+- **[SOLUCION_ERROR.md](SOLUCION_ERROR.md)** ← Estás aquí - Soluciones generales
+- **[CAMARA_TRUST_WALLET.md](CAMARA_TRUST_WALLET.md)** ← Problemas de cámara
+- **[TRUST_WALLET_SETUP.md](TRUST_WALLET_SETUP.md)** ← Guía de uso general
