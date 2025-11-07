@@ -82,13 +82,52 @@ async function getSignerAndContract() {
 
     let web3Provider;
 
+    // 1. Detectar si Trust Wallet o MetaMask inyectaron window.ethereum
     if (window.ethereum) {
-      log('[Blockchain] Usando window.ethereum');
+      log('[Blockchain] ✓ Detectado window.ethereum (Trust Wallet/MetaMask)');
+
+      // Verificar si necesitamos cambiar de red
+      try {
+        const currentChainId = await window.ethereum.request({ method: 'eth_chainId' });
+        log(`[Blockchain] Chain ID actual: ${currentChainId}, requerido: ${network.chainIdHex}`);
+
+        if (currentChainId !== network.chainIdHex) {
+          log('[Blockchain] Solicitando cambio de red a Sepolia...');
+          try {
+            await window.ethereum.request({
+              method: 'wallet_switchEthereumChain',
+              params: [{ chainId: network.chainIdHex }],
+            });
+          } catch (switchError) {
+            // Si la red no existe, agregarla
+            if (switchError.code === 4902) {
+              await window.ethereum.request({
+                method: 'wallet_addEthereumChain',
+                params: [{
+                  chainId: network.chainIdHex,
+                  chainName: network.name,
+                  rpcUrls: [network.rpcUrl],
+                  nativeCurrency: { name: 'Sepolia ETH', symbol: 'ETH', decimals: 18 },
+                  blockExplorerUrls: ['https://sepolia.etherscan.io']
+                }],
+              });
+            } else {
+              throw switchError;
+            }
+          }
+        }
+      } catch (err) {
+        log('[Blockchain] Advertencia al verificar/cambiar red: ' + err.message, 'warn');
+      }
+
       // Solicitar cuentas
       await window.ethereum.request({ method: 'eth_requestAccounts' });
       // Envolver en ethers
       web3Provider = new ethers.providers.Web3Provider(window.ethereum, 'any');
     } else {
+      // 2. Si no hay window.ethereum, usar WalletConnect
+      log('[Blockchain] No se detectó window.ethereum, intentando WalletConnect...');
+
       const EthereumProviderClass = resolveWCEProviderClass();
       if (!EthereumProviderClass) {
         throw new Error('No se detectó wallet. Para usar Trust Wallet:\n\n1. Abre esta página en el navegador de Trust Wallet (DApp Browser)\n2. O escanea el código QR desde Trust Wallet\n3. También puedes usar MetaMask en escritorio');

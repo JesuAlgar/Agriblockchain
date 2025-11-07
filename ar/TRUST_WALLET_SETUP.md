@@ -1,13 +1,29 @@
 # Cómo usar Trust Wallet con tu aplicación AR Blockchain
 
-## Opción 1: Abrir directamente desde Trust Wallet (RECOMENDADO) 📱
+## ⚠️ IMPORTANTE: Solución al error "window.WalletConnectProvider: false"
+
+El error que viste indica que la librería WalletConnect no se cargó desde internet. Esto pasa cuando:
+- No hay conexión a internet estable
+- El CDN está bloqueado
+- Estás usando HTTP en vez de HTTPS
+
+**SOLUCIÓN RECOMENDADA**: Usa Trust Wallet en modo DApp Browser (Opción 1) - esto NO requiere WalletConnect porque Trust Wallet inyecta directamente `window.ethereum`.
+
+---
+
+## Opción 1: Abrir directamente desde Trust Wallet (RECOMENDADO - NO REQUIERE WALLETCONNECT) 📱
 
 1. **Abre Trust Wallet** en tu móvil
-2. Ve a la pestaña **"Browser"** o **"DApps"** (icono de navegador)
-3. Escribe o pega la URL de tu aplicación
-4. La aplicación detectará automáticamente Trust Wallet
-5. Cuando presiones el botón "BC" (Blockchain), Trust Wallet te pedirá confirmar la conexión
-6. Acepta la conexión y firma las transacciones cuando te lo pida
+2. Ve a la pestaña **"Browser"** o **"DApps"** (icono de navegador en la parte inferior)
+3. Escribe o pega la **URL completa** de tu aplicación
+   - Ejemplo: `https://tu-dominio.com/ar/index.html`
+   - O la URL de Netlify: `https://startling-bublanina-651809.netlify.app/ar/index.html`
+4. La aplicación detectará automáticamente Trust Wallet con `window.ethereum`
+5. Cuando presiones el botón **"BC"** (Blockchain), Trust Wallet te pedirá:
+   - **Cambiar a red Sepolia** (si no la tienes configurada)
+   - **Conectar tu cuenta**
+6. Acepta ambos permisos
+7. **¡Listo!** Ya puedes guardar datos en blockchain
 
 ## Opción 2: Usar WalletConnect QR (Escritorio + Móvil) 💻📱
 

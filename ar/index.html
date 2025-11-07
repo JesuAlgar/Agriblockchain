@@ -29,8 +29,56 @@
     }
   </script>
 
-  <!-- WalletConnect v2 Ethereum Provider UMD (evita imports de Node como 'events') -->
-  <script src="https://cdn.jsdelivr.net/npm/@walletconnect/ethereum-provider@2.16.1/dist/umd/index.min.js"></script>
+  <!-- WalletConnect v2 Ethereum Provider - UNPKG es más confiable para UMD -->
+  <script src="https://unpkg.com/@walletconnect/ethereum-provider@2.16.1/dist/umd/index.min.js"></script>
+
+  <!-- Script de verificación de carga y diagnóstico -->
+  <script>
+    // Verificar que WalletConnect se cargó correctamente
+    window.addEventListener('DOMContentLoaded', () => {
+      console.log('='.repeat(60));
+      console.log('DIAGNÓSTICO DE WALLET - Trust Wallet/MetaMask');
+      console.log('='.repeat(60));
+
+      // Verificar protocolo
+      console.log('[Protocolo]', window.location.protocol);
+      if (window.location.protocol === 'file:') {
+        console.error('⚠️ ADVERTENCIA: Usando protocolo file://. Usa HTTPS o servidor local.');
+      }
+
+      // Verificar disponibilidad de wallets
+      console.log('[window.ethereum]', window.ethereum ? '✓ DISPONIBLE' : '✗ NO disponible');
+      console.log('[window.WalletConnectProvider]', window.WalletConnectProvider ? '✓ DISPONIBLE' : '✗ NO disponible');
+
+      // Detectar tipo de wallet
+      if (window.ethereum) {
+        const isTrust = window.ethereum.isTrust;
+        const isMetaMask = window.ethereum.isMetaMask;
+        console.log('[Tipo de Wallet]',
+          isTrust ? 'Trust Wallet ✓' :
+          isMetaMask ? 'MetaMask ✓' :
+          'Wallet genérica');
+      }
+
+      // Verificar ethers.js
+      console.log('[ethers.js]', typeof window.ethers !== 'undefined' ? '✓ Cargado' : '✗ NO cargado');
+
+      console.log('='.repeat(60));
+
+      // Mensaje de ayuda
+      if (!window.ethereum && !window.WalletConnectProvider) {
+        console.error(`
+🚨 NO SE DETECTÓ WALLET
+
+SOLUCIONES:
+1. Abre esta página desde el navegador DApp de Trust Wallet
+2. Verifica que tienes conexión a internet (para cargar WalletConnect)
+3. Si estás en escritorio, usa MetaMask extension
+4. Revisa la consola para más detalles
+        `);
+      }
+    });
+  </script>
   
   <script>
     function enterFullscreen() {
