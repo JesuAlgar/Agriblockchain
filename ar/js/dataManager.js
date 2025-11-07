@@ -31,13 +31,47 @@ const FALLBACK_DATA = {
 // --------------------------------------------
 function resolveWCEProviderClass() {
   const w = window;
-  // Prefer explicit global
-  if (w.WalletConnectEthereumProvider && w.WalletConnectEthereumProvider.init) return w.WalletConnectEthereumProvider;
-  // Some UMDs expose as EthereumProvider
-  if (w.EthereumProvider && w.EthereumProvider.init) return w.EthereumProvider;
-  // Some builds expose as default under namespaces
-  if (w.WalletConnectEthereumProvider && w.WalletConnectEthereumProvider.default && w.WalletConnectEthereumProvider.default.init) return w.WalletConnectEthereumProvider.default;
-  if (w.WalletConnectProvider && w.WalletConnectProvider.default && w.WalletConnectProvider.default.init) return w.WalletConnectProvider.default;
+
+  // Debug: Mostrar lo que está disponible
+  log('[WC] Buscando WalletConnect provider...');
+
+  // La librería UMD de WalletConnect v2 expone el proveedor como:
+  // window.WalletConnectProvider o window.WalletConnectProvider.default
+
+  // 1. Intenta window.WalletConnectProvider.default (más común)
+  if (w.WalletConnectProvider && w.WalletConnectProvider.default) {
+    log('[WC] ✓ Encontrado: WalletConnectProvider.default');
+    return w.WalletConnectProvider.default;
+  }
+
+  // 2. Intenta window.WalletConnectProvider directo
+  if (w.WalletConnectProvider && typeof w.WalletConnectProvider.init === 'function') {
+    log('[WC] ✓ Encontrado: WalletConnectProvider');
+    return w.WalletConnectProvider;
+  }
+
+  // 3. Intenta window.WalletConnectEthereumProvider (nombre alternativo)
+  if (w.WalletConnectEthereumProvider && w.WalletConnectEthereumProvider.init) {
+    log('[WC] ✓ Encontrado: WalletConnectEthereumProvider');
+    return w.WalletConnectEthereumProvider;
+  }
+
+  // 4. Intenta window.EthereumProvider
+  if (w.EthereumProvider && w.EthereumProvider.init) {
+    log('[WC] ✓ Encontrado: EthereumProvider');
+    return w.EthereumProvider;
+  }
+
+  // 5. Intenta acceder al namespace completo
+  if (w['@walletconnect/ethereum-provider'] && w['@walletconnect/ethereum-provider'].default) {
+    log('[WC] ✓ Encontrado: @walletconnect/ethereum-provider');
+    return w['@walletconnect/ethereum-provider'].default;
+  }
+
+  log('[WC] ✗ No se encontró ningún proveedor WalletConnect', 'error');
+  log('[WC] window.WalletConnectProvider existe? ' + (!!w.WalletConnectProvider), 'warn');
+  log('[WC] window.ethereum existe? ' + (!!w.ethereum), 'warn');
+
   return null;
 }
 
@@ -57,16 +91,21 @@ async function getSignerAndContract() {
     } else {
       const EthereumProviderClass = resolveWCEProviderClass();
       if (!EthereumProviderClass) {
-        throw new Error('MetaMask/WalletConnect no disponible. Abre con una wallet o usa QR en escritorio.');
+        throw new Error('No se detectó wallet. Para usar Trust Wallet:\n\n1. Abre esta página en el navegador de Trust Wallet (DApp Browser)\n2. O escanea el código QR desde Trust Wallet\n3. También puedes usar MetaMask en escritorio');
       }
-      log('[Blockchain] Iniciando WalletConnect Provider (UMD)');
+      log('[Blockchain] Iniciando WalletConnect Provider...');
       const wcProvider = await EthereumProviderClass.init({
         projectId: CONFIG.walletConnect.projectId,
         showQrModal: true,
         chains: [chainId],
-        metadata: CONFIG.walletConnect.metadata
+        metadata: CONFIG.walletConnect.metadata,
+        rpcMap: {
+          [chainId]: network.rpcUrl
+        }
       });
+      log('[Blockchain] Solicitando conexión con wallet...');
       await wcProvider.enable();
+      log('[Blockchain] ✓ Conectado con wallet');
       web3Provider = new ethers.providers.Web3Provider(wcProvider, 'any');
       STATE.blockchainProvider = wcProvider;
     }
