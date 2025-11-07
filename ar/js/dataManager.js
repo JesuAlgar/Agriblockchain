@@ -29,6 +29,18 @@ const FALLBACK_DATA = {
 // --------------------------------------------
 // Provider / Signer via MetaMask or WalletConnect
 // --------------------------------------------
+function resolveWCEProviderClass() {
+  const w = window;
+  // Prefer explicit global
+  if (w.WalletConnectEthereumProvider && w.WalletConnectEthereumProvider.init) return w.WalletConnectEthereumProvider;
+  // Some UMDs expose as EthereumProvider
+  if (w.EthereumProvider && w.EthereumProvider.init) return w.EthereumProvider;
+  // Some builds expose as default under namespaces
+  if (w.WalletConnectEthereumProvider && w.WalletConnectEthereumProvider.default && w.WalletConnectEthereumProvider.default.init) return w.WalletConnectEthereumProvider.default;
+  if (w.WalletConnectProvider && w.WalletConnectProvider.default && w.WalletConnectProvider.default.init) return w.WalletConnectProvider.default;
+  return null;
+}
+
 async function getSignerAndContract() {
   try {
     const { contractAddress, contractABI, network } = CONFIG.blockchain;
@@ -42,10 +54,13 @@ async function getSignerAndContract() {
       await window.ethereum.request({ method: 'eth_requestAccounts' });
       // Envolver en ethers
       web3Provider = new ethers.providers.Web3Provider(window.ethereum, 'any');
-    } else if (window.WalletConnectEthereumProvider) {
-      log('[Blockchain] Iniciando WalletConnect Provider');
-      const EthereumProvider = window.WalletConnectEthereumProvider;
-      const wcProvider = await EthereumProvider.init({
+    } else {
+      const EthereumProviderClass = resolveWCEProviderClass();
+      if (!EthereumProviderClass) {
+        throw new Error('MetaMask/WalletConnect no disponible. Abre con una wallet o usa QR en escritorio.');
+      }
+      log('[Blockchain] Iniciando WalletConnect Provider (UMD)');
+      const wcProvider = await EthereumProviderClass.init({
         projectId: CONFIG.walletConnect.projectId,
         showQrModal: true,
         chains: [chainId],
@@ -54,8 +69,6 @@ async function getSignerAndContract() {
       await wcProvider.enable();
       web3Provider = new ethers.providers.Web3Provider(wcProvider, 'any');
       STATE.blockchainProvider = wcProvider;
-    } else {
-      throw new Error('MetaMask/WalletConnect no disponible. Abre con una wallet o usa QR en escritorio.');
     }
 
     const signer = web3Provider.getSigner();
