@@ -29,6 +29,13 @@
     }
   </script>
 
+  <!-- Polyfills mínimos para bundles UMD que esperan entorno Node-like -->
+  <script>
+    // Algunas builds de WalletConnect esperan `process.env` y `global`
+    window.global = window.global || window;
+    window.process = window.process || { env: {} };
+  </script>
+
   <!-- WalletConnect v2 Ethereum Provider UMD (dos CDNs por fiabilidad) -->
   <script src="https://unpkg.com/@walletconnect/ethereum-provider@2.16.1/dist/index.umd.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@walletconnect/ethereum-provider@2.16.1/dist/index.umd.js"></script>
