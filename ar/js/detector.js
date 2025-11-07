@@ -46,21 +46,8 @@ export async function loadModel() {
           }
         } catch {}
 
-        // 2) Si no hay WebGL, intentar WASM
+        // 2) Si no hay WebGL, caer directamente a CPU (evitar CORS de WASM en algunos CDNs)
         if (backend !== 'webgl') {
-          try {
-            if (tf.findBackend && tf.findBackend('wasm')) {
-              await tf.setBackend('wasm');
-              await tf.ready();
-              backend = tf.getBackend();
-            }
-          } catch (e2) {
-            log(`Fallo backend wasm: ${e2.message}`, 'warn');
-          }
-        }
-
-        // 3) Si tampoco WASM funciona, caer a CPU
-        if (backend !== 'webgl' && backend !== 'wasm') {
           try {
             await tf.setBackend('cpu');
             await tf.ready();

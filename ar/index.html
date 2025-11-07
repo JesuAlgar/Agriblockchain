@@ -21,7 +21,7 @@
   
   <!-- TensorFlow.js -->
   <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.11.0"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs-backend-wasm@4.11.0/dist/tf-backend-wasm.js"></script>
+  <!-- Eliminado backend WASM para evitar CORS/404; usamos WebGL o CPU -->
   <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd@2.2.3"></script>
   <script>
     if (window.tf && tf.wasm && tf.wasm.setWasmPaths) {
