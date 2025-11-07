@@ -390,7 +390,12 @@ export function toggleTheme() {
  * Activa/desactiva pantalla completa (compatible con móviles y Trust Wallet)
  */
 export function toggleFullscreen() {
-  const elem = document.documentElement;
+  // Intentar con diferentes elementos
+  const elements = [
+    document.documentElement,
+    document.body,
+    document.getElementById('container')
+  ];
 
   // Detectar si ya estamos en pantalla completa (soporta prefijos)
   const isFullscreen =
@@ -401,48 +406,81 @@ export function toggleFullscreen() {
     document.body.classList.contains('simulated-fullscreen');
 
   console.log('[Fullscreen] Estado actual:', isFullscreen ? 'Activado' : 'Desactivado');
+  console.log('[Fullscreen] User Agent:', navigator.userAgent);
 
   try {
     if (!isFullscreen) {
-      // Intentar entrar en pantalla completa con diferentes métodos
-      if (elem.requestFullscreen) {
-        elem.requestFullscreen()
-          .then(() => {
-            console.log('[Fullscreen] ✓ Modo nativo activado');
-            updateFullscreenButton(true);
-          })
-          .catch(err => {
-            console.warn('[Fullscreen] requestFullscreen falló:', err.message);
-            // Fallback a modo simulado
-            simulateFullscreen(true);
-            showAlert('Pantalla completa simulada', 'info');
-          });
-      } else if (elem.webkitRequestFullscreen) {
-        // Safari y iOS
-        elem.webkitRequestFullscreen();
-        console.log('[Fullscreen] ✓ Modo webkit activado');
-        updateFullscreenButton(true);
-      } else if (elem.webkitEnterFullscreen) {
-        // iOS más antiguo
-        elem.webkitEnterFullscreen();
-        console.log('[Fullscreen] ✓ Modo webkit enter activado');
-        updateFullscreenButton(true);
-      } else if (elem.mozRequestFullScreen) {
-        // Firefox
-        elem.mozRequestFullScreen();
-        console.log('[Fullscreen] ✓ Modo moz activado');
-        updateFullscreenButton(true);
-      } else if (elem.msRequestFullscreen) {
-        // IE/Edge
-        elem.msRequestFullscreen();
-        console.log('[Fullscreen] ✓ Modo ms activado');
-        updateFullscreenButton(true);
-      } else {
-        // Si nada funciona, simular fullscreen con CSS
-        console.log('[Fullscreen] Usando modo simulado');
-        simulateFullscreen(true);
-        showAlert('Modo pantalla completa activado', 'success');
+      let attempted = false;
+
+      // Intentar con cada elemento hasta que uno funcione
+      for (const elem of elements) {
+        if (!elem) continue;
+
+        console.log('[Fullscreen] Intentando con:', elem.tagName || elem.id);
+
+        // Método 1: requestFullscreen (estándar)
+        if (typeof elem.requestFullscreen === 'function') {
+          console.log('[Fullscreen] Probando requestFullscreen...');
+          elem.requestFullscreen()
+            .then(() => {
+              console.log('[Fullscreen] ✓ requestFullscreen funcionó');
+              updateFullscreenButton(true);
+            })
+            .catch(err => {
+              console.warn('[Fullscreen] requestFullscreen falló:', err.message);
+              if (!attempted) {
+                attempted = true;
+                tryWebkitFullscreen(elem);
+              }
+            });
+          return; // Esperar a que resuelva la promesa
+        }
+
+        // Método 2: webkitRequestFullscreen (Safari, Chrome móvil)
+        if (typeof elem.webkitRequestFullscreen === 'function') {
+          console.log('[Fullscreen] Probando webkitRequestFullscreen...');
+          try {
+            elem.webkitRequestFullscreen();
+            console.log('[Fullscreen] ✓ webkitRequestFullscreen activado');
+            setTimeout(() => updateFullscreenButton(true), 100);
+            return;
+          } catch (err) {
+            console.warn('[Fullscreen] webkitRequestFullscreen falló:', err.message);
+          }
+        }
+
+        // Método 3: mozRequestFullScreen (Firefox)
+        if (typeof elem.mozRequestFullScreen === 'function') {
+          console.log('[Fullscreen] Probando mozRequestFullScreen...');
+          try {
+            elem.mozRequestFullScreen();
+            console.log('[Fullscreen] ✓ mozRequestFullScreen activado');
+            setTimeout(() => updateFullscreenButton(true), 100);
+            return;
+          } catch (err) {
+            console.warn('[Fullscreen] mozRequestFullScreen falló:', err.message);
+          }
+        }
+
+        // Método 4: msRequestFullscreen (IE/Edge)
+        if (typeof elem.msRequestFullscreen === 'function') {
+          console.log('[Fullscreen] Probando msRequestFullscreen...');
+          try {
+            elem.msRequestFullscreen();
+            console.log('[Fullscreen] ✓ msRequestFullscreen activado');
+            setTimeout(() => updateFullscreenButton(true), 100);
+            return;
+          } catch (err) {
+            console.warn('[Fullscreen] msRequestFullscreen falló:', err.message);
+          }
+        }
       }
+
+      // Si llegamos aquí, ningún método nativo funcionó
+      console.log('[Fullscreen] ⚠️ Ningún método nativo disponible, usando modo simulado');
+      simulateFullscreen(true);
+      showAlert('Modo pantalla completa (simulado)', 'info');
+
     } else {
       // Salir de pantalla completa
       if (document.exitFullscreen) {
@@ -473,6 +511,29 @@ export function toggleFullscreen() {
     // Fallback: usar modo simulado
     const isSimulated = document.body.classList.contains('simulated-fullscreen');
     simulateFullscreen(!isSimulated);
+  }
+}
+
+/**
+ * Intenta fullscreen con webkit como fallback
+ */
+function tryWebkitFullscreen(elem) {
+  console.log('[Fullscreen] Intentando fallback webkit...');
+  if (typeof elem.webkitRequestFullscreen === 'function') {
+    try {
+      elem.webkitRequestFullscreen();
+      console.log('[Fullscreen] ✓ Fallback webkit funcionó');
+      setTimeout(() => updateFullscreenButton(true), 100);
+    } catch (err) {
+      console.warn('[Fullscreen] Fallback webkit también falló:', err.message);
+      // Último recurso: modo simulado
+      simulateFullscreen(true);
+      showAlert('Modo pantalla completa (simulado)', 'info');
+    }
+  } else {
+    // No hay webkit, usar modo simulado
+    simulateFullscreen(true);
+    showAlert('Modo pantalla completa (simulado)', 'info');
   }
 }
 
