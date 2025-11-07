@@ -133,14 +133,26 @@ async function getSignerAndContract() {
         throw new Error('No se detectó wallet. Para usar Trust Wallet:\n\n1. Abre esta página en el navegador de Trust Wallet (DApp Browser)\n2. O escanea el código QR desde Trust Wallet\n3. También puedes usar MetaMask en escritorio');
       }
       log('[Blockchain] Iniciando WalletConnect Provider...');
+      // Metadata dinámica para que el dominio coincida exactamente con el actual
+      const metaCfg = CONFIG.walletConnect?.metadata || {};
+      const appOrigin = (typeof location !== 'undefined' && location.origin) ? location.origin : (metaCfg.url || '');
+      let iconAbs = '';
+      try {
+        const rel = metaCfg.icon || './assets/plant.png';
+        iconAbs = new URL(rel, (typeof location !== 'undefined' ? location.href : rel)).href;
+      } catch {}
+      const wcMetadata = {
+        name: metaCfg.name || 'AgriBlockchain',
+        description: metaCfg.description || 'AR + IA + Blockchain',
+        url: appOrigin,
+        icons: iconAbs ? [iconAbs] : []
+      };
       const wcProvider = await EthereumProviderClass.init({
         projectId: CONFIG.walletConnect.projectId,
         showQrModal: true,
         chains: [chainId],
-        metadata: CONFIG.walletConnect.metadata,
-        rpcMap: {
-          [chainId]: network.rpcUrl
-        }
+        metadata: wcMetadata,
+        rpcMap: { [chainId]: network.rpcUrl }
       });
       log('[Blockchain] Solicitando conexión con wallet...');
       await wcProvider.enable();
