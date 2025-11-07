@@ -31,25 +31,43 @@ export async function loadModel() {
     
     log('Cargando modelo COCO-SSD...');
 
-    // Preparar backend de TensorFlow: WebGL preferido, fallback WASM
+    // Preparar backend de TensorFlow con cadena robusta: webgl -> wasm -> cpu
     if (typeof tf !== 'undefined') {
       try {
         await tf.ready();
-        let backend = tf.getBackend && tf.getBackend();
-        // Si no hay backend o no es webgl, intenta webgl primero
-        const canWebGL = (tf.findBackend && tf.findBackend('webgl')) || (tf.engine && tf.engine().registryFactory && tf.engine().registryFactory['webgl']);
-        if (canWebGL && backend !== 'webgl') {
-          await tf.setBackend('webgl');
-          await tf.ready();
-          backend = tf.getBackend && tf.getBackend();
+        let backend = tf.getBackend();
+
+        // 1) Intentar WebGL primero
+        try {
+          if (backend !== 'webgl' && tf.findBackend && tf.findBackend('webgl')) {
+            await tf.setBackend('webgl');
+            await tf.ready();
+            backend = tf.getBackend();
+          }
+        } catch {}
+
+        // 2) Si no hay WebGL, intentar WASM
+        if (backend !== 'webgl') {
+          try {
+            if (tf.findBackend && tf.findBackend('wasm')) {
+              await tf.setBackend('wasm');
+              await tf.ready();
+              backend = tf.getBackend();
+            }
+          } catch (e2) {
+            log(`Fallo backend wasm: ${e2.message}`, 'warn');
+          }
         }
-        // Si no hay webgl, intenta wasm
-        const canWASM = (tf.findBackend && tf.findBackend('wasm')) || (tf.engine && tf.engine().registryFactory && tf.engine().registryFactory['wasm']);
-        if (backend !== 'webgl' && canWASM && backend !== 'wasm') {
-          await tf.setBackend('wasm');
-          await tf.ready();
-          backend = tf.getBackend && tf.getBackend();
+
+        // 3) Si tampoco WASM funciona, caer a CPU
+        if (backend !== 'webgl' && backend !== 'wasm') {
+          try {
+            await tf.setBackend('cpu');
+            await tf.ready();
+            backend = tf.getBackend();
+          } catch {}
         }
+
         log(`Backend TF activo: ${backend}`);
       } catch (e) {
         log(`No se pudo preparar backend TF: ${e.message}`, 'warn');

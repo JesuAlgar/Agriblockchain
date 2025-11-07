@@ -126,8 +126,13 @@ async function getSignerAndContract() {
       web3Provider = new ethers.providers.Web3Provider(window.ethereum, 'any');
       // Verificar red tras conectar
       try {
-        const currentChain = await web3Provider.send('eth_chainId', []);
-        if (currentChain?.toLowerCase() !== network.chainIdHex.toLowerCase()) {
+        let currentChain = await web3Provider.send('eth_chainId', []);
+        if (typeof currentChain === 'number') {
+          currentChain = '0x' + currentChain.toString(16);
+        }
+        const cur = String(currentChain || '').toLowerCase();
+        const target = String(network.chainIdHex || '').toLowerCase();
+        if (cur !== target) {
           throw new Error('Red incorrecta en la wallet. Cambia a Sepolia (chainId 11155111) en tu wallet y vuelve a intentar.');
         }
       } catch (netErr) {
@@ -272,8 +277,13 @@ async function getSignerAndContract() {
 
       // Verificar red después de conectar (sin forzar cambio): instruir al usuario si no es Sepolia
       try {
-        const currentChain = await web3Provider.send('eth_chainId', []);
-        if (currentChain?.toLowerCase() !== network.chainIdHex.toLowerCase()) {
+        let currentChain = await web3Provider.send('eth_chainId', []);
+        if (typeof currentChain === 'number') {
+          currentChain = '0x' + currentChain.toString(16);
+        }
+        const cur = String(currentChain || '').toLowerCase();
+        const target = String(network.chainIdHex || '').toLowerCase();
+        if (cur !== target) {
           throw new Error('Wallet conectada en red distinta. Abre tu wallet y cambia manualmente a Sepolia (11155111), luego vuelve y pulsa Guardar.');
         }
       } catch (netErr) {
