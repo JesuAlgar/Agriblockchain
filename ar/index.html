@@ -29,23 +29,25 @@
     }
   </script>
 
-  <!-- WalletConnect v2 Ethereum Provider (ESM) para Trust Wallet y otras -->
-  <script type="module">
-    import { EthereumProvider } from 'https://cdn.jsdelivr.net/npm/@walletconnect/ethereum-provider@2/dist/index.min.js';
-    window.WalletConnectEthereumProvider = EthereumProvider;
-  </script>
+  <!-- WalletConnect v2 Ethereum Provider UMD (evita imports de Node como 'events') -->
+  <script src="https://cdn.jsdelivr.net/npm/@walletconnect/ethereum-provider@2.11.0/dist/umd/index.min.js"></script>
   
   <script>
     function enterFullscreen() {
-      const isMetaMask = /MetaMaskMobile/i.test(navigator.userAgent);
-      if (isMetaMask) return;
-      const elem = document.documentElement;
-      if (elem.requestFullscreen) {
-        elem.requestFullscreen().catch(err => console.log('Fullscreen error:', err));
-      } else if (elem.webkitRequestFullscreen) {
-        elem.webkitRequestFullscreen();
-      } else if (elem.msRequestFullscreen) {
-        elem.msRequestFullscreen();
+      try {
+        const isMetaMask = /MetaMaskMobile/i.test(navigator.userAgent);
+        if (isMetaMask) return;
+        const elem = document.documentElement;
+        if (elem.requestFullscreen) {
+          const p = elem.requestFullscreen();
+          if (p && p.catch) p.catch(() => {});
+        } else if (elem.webkitRequestFullscreen) {
+          elem.webkitRequestFullscreen();
+        } else if (elem.msRequestFullscreen) {
+          elem.msRequestFullscreen();
+        }
+      } catch (err) {
+        console.log('Fullscreen error:', err);
       }
       document.removeEventListener('click', enterFullscreen);
       document.removeEventListener('touchstart', enterFullscreen);
