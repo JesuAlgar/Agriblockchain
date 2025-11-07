@@ -1,5 +1,5 @@
-// ============================================
-// CONFIGURACIÓN GLOBAL MEJORADA
+﻿// ============================================
+// CONFIGURACIÃ“N GLOBAL MEJORADA
 // ============================================
 
 export const CONFIG = {
@@ -15,32 +15,32 @@ export const CONFIG = {
     battery_pct: { min: 20, max: 100 }
   },
   
-  // ⭐ MEJORADO: Configuración de cámara CON ZOOM
+  // â­ MEJORADO: ConfiguraciÃ³n de cÃ¡mara CON ZOOM
   camera: {
     facingMode: 'environment',
     idealWidth: 1280,
     idealHeight: 720,
-    zoomLevel: 1, // ⭐ NUEVO: Nivel de zoom inicial
-    zoomStep: 0.2, // ⭐ NUEVO: Paso de zoom (20%)
+    zoomLevel: 1, // â­ NUEVO: Nivel de zoom inicial
+    zoomStep: 0.2, // â­ NUEVO: Paso de zoom (20%)
     minZoom: 1,
     maxZoom: 4
   },
   
-  // Configuración del modelo de IA
+  // ConfiguraciÃ³n del modelo de IA
   model: {
     base: 'mobilenet_v2',
     forceWasmOnMobile: true,
     
-    // ⭐ EXPANDIDO: Ahora detecta PLANTAS, ÁRBOLES y ARBUSTOS
+    // â­ EXPANDIDO: Ahora detecta PLANTAS, ÃRBOLES y ARBUSTOS
     // Clases que detecta COCO-SSD
     plantClasses: [
-      // Plantas pequeñas/macetas
+      // Plantas pequeÃ±as/macetas
       'potted plant',
       'vase',
       'plant',
       
-      // ⭐ NUEVAS: Plantas y árboles más grandes
-      'tree',          // Árboles
+      // â­ NUEVAS: Plantas y Ã¡rboles mÃ¡s grandes
+      'tree',          // Ãrboles
       'bush',          // Arbustos
       'shrub',         // Arbustos (alias)
       'cactus',        // Cactus
@@ -52,12 +52,12 @@ export const CONFIG = {
       'climbing plant' // Plantas trepadoras
     ],
     
-    // ⭐ NUEVO: Umbral mínimo de confianza (0-1)
-    // Más bajo = más detecciones, más alto = solo las muy seguras
-    confidenceThreshold: 0.4 // 40% de confianza mínima
+    // â­ NUEVO: Umbral mÃ­nimo de confianza (0-1)
+    // MÃ¡s bajo = mÃ¡s detecciones, mÃ¡s alto = solo las muy seguras
+    confidenceThreshold: 0.4 // 40% de confianza mÃ­nima
   },
   
-  // Configuración de UI
+  // ConfiguraciÃ³n de UI
   ui: {
     panelOffset: 20,
     panelWidth: 220,
@@ -65,7 +65,7 @@ export const CONFIG = {
     alertCooldown: 30000
   },
   
-  // Configuración blockchain
+  // ConfiguraciÃ³n blockchain
   blockchain: {
     mode: 'BLOCKCHAIN',
     
@@ -105,6 +105,17 @@ export const CONFIG = {
       }
     ]
   }
+  ,
+  // WalletConnect
+  walletConnect: {
+    projectId: '52a58f37420c2c8eed772823a7e37667', // Pega aquÃ­ tu Project ID de cloud.walletconnect.com
+    metadata: {
+      name: 'AgriBlockchain',
+      description: 'AR + IA + Blockchain',
+      url: 'https://startling-bublanina-651809.netlify.app', // opcional: tu dominio pÃºblico
+      icon: './assets/plant.png'
+    }
+  }
 };
 
 // Obtener ID de planta desde URL
@@ -113,7 +124,7 @@ export function getPlantIdFromURL() {
   return params.get('id') || 'planta01';
 }
 
-// ⭐ MEJORADO: Estado global compartido
+// â­ MEJORADO: Estado global compartido
 export const STATE = {
   currentTheme: 'dark',
   model: null,
@@ -121,12 +132,12 @@ export const STATE = {
   canvas: null,
   ctx: null,
   container: null,
-  stream: null, // ⭐ NUEVO: Stream de video
+  stream: null, // â­ NUEVO: Stream de video
   lastDetectionTime: 0,
   detectionCount: 0,
   alertShown: new Set(),
   
-  // ⭐ NUEVO: Capacidades de zoom
+  // â­ NUEVO: Capacidades de zoom
   cameraZoomCapabilities: {
     supported: false,
     currentZoom: 1
@@ -137,3 +148,4 @@ export const STATE = {
   blockchainContract: null,
   blockchainConnected: false
 };
+

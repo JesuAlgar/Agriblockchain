@@ -1,273 +1,154 @@
-// ============================================
-// APP.JS - INTEGRACION COMPLETA
+﻿// ============================================
+// APP.JS - ARRANQUE LIGERO Y UI LIMPIA
 // ============================================
 
-import { loginWithMagic, getMagicUser, logoutMagic, savePlantData } from './dataManager.js';
 import { log } from './utils.js';
+import { startCamera, increaseZoom, decreaseZoom, resetZoom, getCurrentZoom } from './camera.js';
+import { loadModel, detect } from './detector.js';
+import { savePlantData } from './dataManager.js';
+import { toggleTheme, toggleFullscreen, showAlert } from './ui.js';
+import { STATE } from './config.js';
 
-let isModelLoaded = false;
-let net;
-
-/**
- * INICIALIZAR APP
- */
-async function initApp() {
-  log('Inicializando app...');
-  
+// --------------------------------------------
+// Arranque principal
+// --------------------------------------------
+async function init() {
   try {
+    log('=== Iniciando AR Planta IA ===');
+
+    // Referencias DOM
+    const video = document.getElementById('camera');
+    const canvas = document.getElementById('canvas');
+    const container = document.getElementById('container');
+    if (!video || !canvas || !container) throw new Error('No se encontró cámara/canvas/contenedor');
+
+    // Guardar contenedor global para UI
+    STATE.container = container;
+
+    // Enlazar UI
+    wireUI();
+
+    // Cámara
+    log('Cámara: solicitando permisos...');
+    await startCamera(video, canvas);
+    log('Cámara lista');
+
+    // IA
     log('Cargando modelo de IA...');
-    net = await cocoSsd.load();
-    isModelLoaded = true;
-    log('✅ Modelo cargado');
-    document.getElementById('loading').style.display = 'none';
-  } catch (error) {
-    log('❌ Error cargando modelo: ' + error.message, 'error');
-  }
+    await loadModel();
+    log('IA lista, iniciando detección...');
+    detect();
 
-  setupUIEvents();
-  
-  const user = await getMagicUser();
-  if (user) {
-    log('✅ Usuario ya logeado: ' + user.email);
-    updateUILogged(user);
-  } else {
-    log('Usuario no logeado');
-    updateUINotLogged();
+  } catch (err) {
+    log(`Error de arranque: ${err.message}`, 'error');
+    showAlert(`Error: ${err.message}`);
   }
 }
 
-/**
- * SETUP EVENTOS UI
- */
-function setupUIEvents() {
-  const loginBtn = document.getElementById('btnLogin');
-  const emailInput = document.getElementById('emailInput');
-  
-  if (loginBtn) {
-    loginBtn.addEventListener('click', async () => {
-      const email = emailInput.value.trim();
-      if (!email) {
-        log('Por favor ingresa un email', 'warn');
-        return;
-      }
-      await handleLogin(email);
-    });
-  }
+// --------------------------------------------
+// UI y eventos
+// --------------------------------------------
+function wireUI() {
+  const byId = (id) => document.getElementById(id);
 
-  const logoutBtn = document.getElementById('btnLogout');
-  if (logoutBtn) {
-    logoutBtn.addEventListener('click', handleLogout);
-  }
+  // Tema / pantalla completa
+  const btnTheme = byId('btnTheme');
+  if (btnTheme) btnTheme.addEventListener('click', toggleTheme);
 
-  const saveChainBtn = document.getElementById('btnSaveChain');
-  if (saveChainBtn) {
-    saveChainBtn.addEventListener('click', handleSaveBlockchain);
-  }
+  const btnFullscreen = byId('btnFullscreen');
+  if (btnFullscreen) btnFullscreen.addEventListener('click', toggleFullscreen);
 
-  const confirmSaveBtn = document.getElementById('btnConfirmSave');
-  if (confirmSaveBtn) {
-    confirmSaveBtn.addEventListener('click', handleConfirmSave);
-  }
+  // Zoom
+  const btnZoomIn = byId('btnZoomIn');
+  const btnZoomOut = byId('btnZoomOut');
+  const btnZoomReset = byId('btnZoomReset');
+  if (btnZoomIn) btnZoomIn.addEventListener('click', async () => { await increaseZoom(0.2); updateZoomIndicator(); });
+  if (btnZoomOut) btnZoomOut.addEventListener('click', async () => { await decreaseZoom(0.2); updateZoomIndicator(); });
+  if (btnZoomReset) btnZoomReset.addEventListener('click', async () => { await resetZoom(); updateZoomIndicator(); });
+  updateZoomIndicator();
 
-  const cancelSaveBtn = document.getElementById('btnCancelSave');
-  if (cancelSaveBtn) {
-    cancelSaveBtn.addEventListener('click', handleCancelSave);
-  }
+  // Guardado en blockchain
+  const btnSaveChain = byId('btnSaveChain');
+  if (btnSaveChain) btnSaveChain.addEventListener('click', openSaveModal);
 
-  const zoomInBtn = document.getElementById('btnZoomIn');
-  const zoomOutBtn = document.getElementById('btnZoomOut');
-  const zoomResetBtn = document.getElementById('btnZoomReset');
-
-  if (zoomInBtn) zoomInBtn.addEventListener('click', () => zoomCamera(1.2));
-  if (zoomOutBtn) zoomOutBtn.addEventListener('click', () => zoomCamera(0.8));
-  if (zoomResetBtn) zoomResetBtn.addEventListener('click', () => zoomCamera(1.0));
+  const btnConfirmSave = byId('btnConfirmSave');
+  const btnCancelSave = byId('btnCancelSave');
+  if (btnConfirmSave) btnConfirmSave.addEventListener('click', handleConfirmSave);
+  if (btnCancelSave) btnCancelSave.addEventListener('click', () => toggleSaveModal(false));
 }
 
-/**
- * HANDLE LOGIN
- */
-async function handleLogin(email) {
-  try {
-    log('Intentando login con: ' + email);
-    
-    const token = await loginWithMagic(email);
-    
-    log('✅ Login exitoso');
-    
-    const user = await getMagicUser();
-    updateUILogged(user);
-
-  } catch (error) {
-    log('❌ Error en login: ' + error.message, 'error');
-  }
+function updateZoomIndicator() {
+  const indicator = document.getElementById('zoomIndicator');
+  if (!indicator) return;
+  const z = getCurrentZoom();
+  indicator.textContent = `Zoom: ${Number(z).toFixed(1)}x`;
 }
 
-/**
- * HANDLE LOGOUT
- */
-async function handleLogout() {
-  try {
-    await logoutMagic();
-    log('✅ Logout exitoso');
-    updateUINotLogged();
-  } catch (error) {
-    log('❌ Error en logout: ' + error.message, 'error');
-  }
+// --------------------------------------------
+// Guardado en blockchain
+// --------------------------------------------
+function openSaveModal() {
+  // Relleno automático básico
+  const set = (id, v) => { const el = document.getElementById(id); if (el) el.value = v; };
+  set('f_eventId', 'EVT-' + Date.now());
+  set('f_batchId', 'BATCH-' + Math.random().toString(36).slice(2, 10));
+  set('f_timestamp', new Date().toISOString());
+  set('f_lotCode', 'LOT-' + new Date().getFullYear());
+  set('f_recordedBy', 'device-web');
+  toggleSaveModal(true);
 }
 
-/**
- * UPDATE UI - LOGEADO
- */
-function updateUILogged(user) {
-  log('Actualizando UI - Usuario logeado: ' + user.email);
-
-  const statusDiv = document.getElementById('status');
-  if (statusDiv) {
-    statusDiv.innerHTML = '✅ ' + user.email + ' | ' + user.publicAddress.substring(0, 10) + '...';
-  }
-
-  const saveChainBtn = document.getElementById('btnSaveChain');
-  if (saveChainBtn) saveChainBtn.disabled = false;
-
-  const form = document.getElementById('loginForm');
-  if (form) form.style.display = 'none';
+function toggleSaveModal(show) {
+  const modal = document.getElementById('saveModal');
+  if (!modal) return;
+  modal.classList[show ? 'remove' : 'add']('hidden');
 }
 
-/**
- * UPDATE UI - NO LOGEADO
- */
-function updateUINotLogged() {
-  log('Actualizando UI - No logeado');
-
-  const statusDiv = document.getElementById('status');
-  if (statusDiv) {
-    statusDiv.innerHTML = '⚠️ No logeado';
-  }
-
-  const saveChainBtn = document.getElementById('btnSaveChain');
-  if (saveChainBtn) saveChainBtn.disabled = true;
-
-  const form = document.getElementById('loginForm');
-  if (form) form.style.display = 'block';
-}
-
-/**
- * HANDLE GUARDAR EN BLOCKCHAIN
- */
-async function handleSaveBlockchain() {
-  try {
-    const user = await getMagicUser();
-    
-    if (!user) {
-      log('❌ No logeado. Haz login primero', 'error');
-      return;
-    }
-
-    log('📝 Abriendo formulario de guardado...');
-
-    const form = document.getElementById('saveForm');
-    if (form) {
-      document.getElementById('f_eventId').value = 'EVT-' + Date.now();
-      document.getElementById('f_batchId').value = 'BATCH-' + Math.random().toString(36).substr(2, 9);
-      document.getElementById('f_timestamp').value = new Date().toISOString();
-      document.getElementById('f_lotCode').value = 'LOT-' + new Date().getFullYear();
-      document.getElementById('f_recordedBy').value = 'device-' + user.publicAddress.substring(0, 8);
-    }
-
-    const modal = document.getElementById('saveModal');
-    if (modal) {
-      modal.classList.remove('hidden');
-    }
-
-  } catch (error) {
-    log('❌ Error: ' + error.message, 'error');
-  }
-}
-
-/**
- * HANDLE CONFIRMAR GUARDADO
- */
 async function handleConfirmSave(e) {
   e.preventDefault();
-
+  const btn = e.currentTarget;
   try {
-    const user = await getMagicUser();
-    if (!user) {
-      log('❌ No logeado', 'error');
-      return;
-    }
+    if (btn) { btn.disabled = true; btn.textContent = 'Guardando...'; }
 
-    log('💾 Guardando datos...');
-
+    const get = (id) => (document.getElementById(id)?.value || '').trim();
     const data = {
-      eventType: document.getElementById('f_eventType').value || 'MONITOR',
-      eventId: document.getElementById('f_eventId').value,
-      batchId: document.getElementById('f_batchId').value,
-      timestamp: document.getElementById('f_timestamp').value,
-      lotCode: document.getElementById('f_lotCode').value,
-      recordedBy: document.getElementById('f_recordedBy').value,
-      fieldId: document.getElementById('f_fieldId').value || 'FIELD-1',
-      seed_LotId: document.getElementById('f_seedLotId').value || 'SEED-001',
-      seedVariety: document.getElementById('f_seedVariety').value || 'Unknown',
-      seedSupplier: document.getElementById('f_seedSupplier').value || 'Unknown',
-      seedTreatment: document.getElementById('f_seedTreatment').value || 'None',
-      quantity_kg: parseFloat(document.getElementById('f_quantityKg').value) || 0,
-      plantingMethod: document.getElementById('f_plantingMethod').value || 'Manual',
-      rowSpacing_cm: parseInt(document.getElementById('f_rowSpacing').value) || 20,
-      plantingDepth_cm: parseFloat(document.getElementById('f_plantingDepth').value) || 2.0,
-      germinationRate_pct: parseInt(document.getElementById('f_germinationRate').value) || 80
+      eventType: get('f_eventType') || 'MONITOR',
+      eventId: get('f_eventId'),
+      batchId: get('f_batchId'),
+      timestamp: get('f_timestamp'),
+      lotCode: get('f_lotCode'),
+      recordedBy: get('f_recordedBy') || 'device-web',
+      fieldId: get('f_fieldId') || 'FIELD-1',
+      seed_LotId: get('f_seedLotId') || 'SEED-001',
+      seedVariety: get('f_seedVariety') || 'Unknown',
+      seedSupplier: get('f_seedSupplier') || 'Unknown',
+      seedTreatment: get('f_seedTreatment') || 'None',
+      quantity_kg: parseFloat(get('f_quantityKg') || '0') || 0,
+      plantingMethod: get('f_plantingMethod') || 'Manual',
+      rowSpacing_cm: parseInt(get('f_rowSpacing') || '20') || 20,
+      plantingDepth_cm: parseFloat(get('f_plantingDepth') || '2.0') || 2.0,
+      germinationRate_pct: parseInt(get('f_germinationRate') || '80') || 80
     };
 
-    log('📤 Enviando datos...');
-
-    const result = await savePlantData('plant-' + user.publicAddress, data);
-
-    log('✅ ¡Guardado exitosamente!');
-
-    const modal = document.getElementById('saveModal');
-    if (modal) {
-      modal.classList.add('hidden');
-    }
-
-  } catch (error) {
-    log('❌ Error guardando: ' + error.message, 'error');
+    const plantId = 'planta01';
+    showAlert('Enviando a blockchain...', 'warning');
+    await savePlantData(plantId, data);
+    showAlert('Datos guardados en blockchain', 'success');
+    toggleSaveModal(false);
+  } catch (err) {
+    log('Error guardando: ' + err.message, 'error');
+    showAlert('Error guardando: ' + err.message, 'danger');
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = 'Guardar'; }
   }
 }
 
-/**
- * HANDLE CANCELAR GUARDADO
- */
-function handleCancelSave() {
-  const modal = document.getElementById('saveModal');
-  if (modal) {
-    modal.classList.add('hidden');
-  }
-  log('Guardado cancelado');
+// --------------------------------------------
+// Arranque
+// --------------------------------------------
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', init);
+} else {
+  init();
 }
 
-/**
- * ZOOM CAMERA
- */
-function zoomCamera(factor) {
-  const canvas = document.getElementById('canvas');
-  if (!canvas) return;
-
-  const style = canvas.style.transform || 'scale(1)';
-  const currentScale = parseFloat(style.match(/\d+\.?\d*/)[0]) || 1;
-  const newScale = currentScale * factor;
-
-  canvas.style.transform = 'scale(' + newScale + ')';
-  
-  const indicator = document.getElementById('zoomIndicator');
-  if (indicator) {
-    indicator.textContent = 'Zoom: ' + newScale.toFixed(1) + 'x';
-  }
-}
-
-/**
- * CUANDO CARGA LA PAGINA
- */
-document.addEventListener('DOMContentLoaded', () => {
-  log('DOM cargado');
-  initApp();
-});

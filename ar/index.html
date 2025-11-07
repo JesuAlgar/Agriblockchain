@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="es">
 <head>
   <meta charset="utf-8">
@@ -27,6 +27,12 @@
     if (window.tf && tf.wasm && tf.wasm.setWasmPaths) {
       tf.wasm.setWasmPaths('https://cdn.jsdelivr.net/npm/@tensorflow/tfjs-backend-wasm@4.11.0/dist/');
     }
+  </script>
+
+  <!-- WalletConnect v2 Ethereum Provider (ESM) para Trust Wallet y otras -->
+  <script type="module">
+    import { EthereumProvider } from 'https://cdn.jsdelivr.net/npm/@walletconnect/ethereum-provider@2/dist/index.min.js';
+    window.WalletConnectEthereumProvider = EthereumProvider;
   </script>
   
   <script>
@@ -63,7 +69,7 @@
       <button class="btn-control btn-zoom" id="btnZoomIn" title="Zoom mas">+</button>
       <button class="btn-control btn-zoom" id="btnZoomReset" title="Reset zoom">Reset</button>
       <button class="btn-control" id="btnWasmToggle" title="Backend TFJS">TF</button>
-      <button class="btn-control" id="btnSaveChain" title="Guardar en blockchain" disabled>BC</button>
+      <button class="btn-control" id="btnSaveChain" title="Guardar en blockchain">BC</button>
       <button class="btn-control" id="btnTheme" title="Cambiar tema">Theme</button>
     </div>
   </div>
@@ -92,19 +98,6 @@
   <button class="btn-fullscreen" id="btnFullscreen" title="Pantalla completa">Fullscreen</button>
 
   <!-- FORMULARIO LOGIN -->
-  <div class="modal-overlay" id="loginForm">
-    <div class="modal">
-      <h2>Iniciar Sesión</h2>
-      <form style="display: flex; flex-direction: column; gap: 12px;">
-        <label>
-          <span>Email</span>
-          <input type="email" id="emailInput" placeholder="tu@email.com" required>
-        </label>
-        <button type="button" class="btn-control" id="btnLogin" style="width: 100%; padding: 12px;">
-          Iniciar Sesión
-        </button>
-      </form>
-    </div>
   </div>
 
   <!-- MODAL GUARDAR EN BLOCKCHAIN -->
@@ -191,3 +184,4 @@
 
 </body>
 </html>
+

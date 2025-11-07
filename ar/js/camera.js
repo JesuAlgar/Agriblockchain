@@ -87,8 +87,15 @@ export async function increaseZoom(step = 0.1) {
     const capabilities = track.getCapabilities();
     
     if (!capabilities.zoom) {
-      log('[Camera] Zoom not supported', 'warn');
-      return false;
+      // Fallback CSS scale (aplica a video + canvas)
+      const current = STATE.cameraZoomCapabilities.currentZoom || 1;
+      const maxZoom = CONFIG.camera.maxZoom || 4;
+      const newZoom = Math.min(current + step, maxZoom);
+      applyCssZoom(newZoom);
+      CONFIG.camera.zoomLevel = newZoom;
+      STATE.cameraZoomCapabilities.currentZoom = newZoom;
+      log(`[Camera] (CSS) Zoom: ${newZoom.toFixed(2)}x`);
+      return true;
     }
     
     const settings = track.getSettings();
@@ -124,8 +131,15 @@ export async function decreaseZoom(step = 0.1) {
     const capabilities = track.getCapabilities();
     
     if (!capabilities.zoom) {
-      log('[Camera] Zoom not supported', 'warn');
-      return false;
+      // Fallback CSS scale
+      const current = STATE.cameraZoomCapabilities.currentZoom || 1;
+      const minZoom = CONFIG.camera.minZoom || 1;
+      const newZoom = Math.max(current - step, minZoom);
+      applyCssZoom(newZoom);
+      CONFIG.camera.zoomLevel = newZoom;
+      STATE.cameraZoomCapabilities.currentZoom = newZoom;
+      log(`[Camera] (CSS) Zoom: ${newZoom.toFixed(2)}x`);
+      return true;
     }
     
     const settings = track.getSettings();
@@ -167,7 +181,14 @@ export async function resetZoom() {
     const track = STATE.stream.getVideoTracks()[0];
     const capabilities = track.getCapabilities();
     
-    if (!capabilities.zoom) return false;
+    if (!capabilities.zoom) {
+      const minZoom = CONFIG.camera.minZoom || 1;
+      applyCssZoom(minZoom);
+      CONFIG.camera.zoomLevel = minZoom;
+      STATE.cameraZoomCapabilities.currentZoom = minZoom;
+      log(`[Camera] (CSS) Zoom reset: ${minZoom}x`);
+      return true;
+    }
     
     const minZoom = capabilities.zoom.min || 1;
     
@@ -226,4 +247,20 @@ export async function switchCamera() {
   }
   
   log(`[Camera] Switched to: ${CONFIG.camera.facingMode}`);
+}
+
+// --------------------------------------------
+// Helpers: CSS Zoom fallback
+// --------------------------------------------
+function applyCssZoom(scale = 1) {
+  try {
+    if (STATE.video) {
+      STATE.video.style.transformOrigin = 'center center';
+      STATE.video.style.transform = `scale(${scale})`;
+    }
+    if (STATE.canvas) {
+      STATE.canvas.style.transformOrigin = 'center center';
+      STATE.canvas.style.transform = `scale(${scale})`;
+    }
+  } catch {}
 }
