@@ -124,6 +124,15 @@ async function getSignerAndContract() {
       await window.ethereum.request({ method: 'eth_requestAccounts' });
       // Envolver en ethers
       web3Provider = new ethers.providers.Web3Provider(window.ethereum, 'any');
+      // Verificar red tras conectar
+      try {
+        const currentChain = await web3Provider.send('eth_chainId', []);
+        if (currentChain?.toLowerCase() !== network.chainIdHex.toLowerCase()) {
+          throw new Error('Red incorrecta en la wallet. Cambia a Sepolia (chainId 11155111) en tu wallet y vuelve a intentar.');
+        }
+      } catch (netErr) {
+        throw netErr;
+      }
     } else {
       // 2. Si no hay window.ethereum, usar WalletConnect
       log('[Blockchain] No se detectó window.ethereum, intentando WalletConnect...');
@@ -257,37 +266,19 @@ async function getSignerAndContract() {
         log('[Blockchain] Provider obtenido, pero no expone enable/request', 'warn');
       }
 
-      // Intentar cambiar a la red objetivo (Sepolia)
-      try {
-        await wcProvider.request({
-          method: 'wallet_switchEthereumChain',
-          params: [{ chainId: network.chainIdHex }]
-        });
-      } catch (switchError) {
-        // Si la red no existe en la wallet, intentar agregarla
-        if (switchError && (switchError.code === 4902 || String(switchError.message||'').includes('Unrecognized chain ID'))) {
-          try {
-            await wcProvider.request({
-              method: 'wallet_addEthereumChain',
-              params: [{
-                chainId: network.chainIdHex,
-                chainName: network.name,
-                rpcUrls: [network.rpcUrl],
-                nativeCurrency: { name: 'Sepolia ETH', symbol: 'ETH', decimals: 18 },
-                blockExplorerUrls: ['https://sepolia.etherscan.io']
-              }]
-            });
-          } catch (addErr) {
-            log('[Blockchain] No se pudo agregar la red en la wallet: ' + (addErr?.message||addErr), 'warn');
-          }
-        } else {
-          log('[Blockchain] No se pudo cambiar de red: ' + (switchError?.message||switchError), 'warn');
-        }
-      }
-
       log('[Blockchain] ✓ Conectado con wallet');
       web3Provider = new ethers.providers.Web3Provider(wcProvider, 'any');
       STATE.blockchainProvider = wcProvider;
+
+      // Verificar red después de conectar (sin forzar cambio): instruir al usuario si no es Sepolia
+      try {
+        const currentChain = await web3Provider.send('eth_chainId', []);
+        if (currentChain?.toLowerCase() !== network.chainIdHex.toLowerCase()) {
+          throw new Error('Wallet conectada en red distinta. Abre tu wallet y cambia manualmente a Sepolia (11155111), luego vuelve y pulsa Guardar.');
+        }
+      } catch (netErr) {
+        throw netErr;
+      }
     }
 
     const signer = web3Provider.getSigner();

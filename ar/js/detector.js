@@ -59,15 +59,14 @@ export async function loadModel() {
     // ✨ OPTIMIZACIÓN 1: Detectar si es móvil
     const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
 
-    // Forzar backend WASM en móviles para evitar cuelgues por WebGL
-    if (typeof tf !== 'undefined' && isMobile && CONFIG.model.forceWasmOnMobile) {
+    // NO forzar WASM en móvil: usar WASM solo si WebGL no está disponible
+    if (typeof tf !== 'undefined') {
       try {
-        await tf.setBackend('wasm');
-        await tf.ready();
-        log('Backend TF forzado: wasm (móvil)');
-      } catch (e) {
-        log(`No se pudo forzar backend wasm: ${e.message}`, 'warn');
-      }
+        const backend = tf.getBackend && tf.getBackend();
+        if (backend !== 'webgl') {
+          log(`Backend TF activo: ${backend} (sin forzar wasm en móvil)`);
+        }
+      } catch {}
     }
     
     // ✨ OPTIMIZACIÓN 2: Usar modelo más ligero en móvil
