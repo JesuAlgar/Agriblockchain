@@ -128,6 +128,10 @@ async function getSignerAndContract() {
       // 2. Si no hay window.ethereum, usar WalletConnect
       log('[Blockchain] No se detectó window.ethereum, intentando WalletConnect...');
 
+      // Asegurar que el script UMD de WC está cargado (intento dinámico)
+      if (typeof window.__ensureWCLoaded === 'function') {
+        await window.__ensureWCLoaded();
+      }
       const EthereumProviderClass = resolveWCEProviderClass();
       if (!EthereumProviderClass) {
         throw new Error('No se detectó wallet. Para usar Trust Wallet:\n\n1. Abre esta página en el navegador de Trust Wallet (DApp Browser)\n2. O escanea el código QR desde Trust Wallet\n3. También puedes usar MetaMask en escritorio');

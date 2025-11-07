@@ -30,8 +30,8 @@
   </script>
 
   <!-- WalletConnect v2 Ethereum Provider UMD (dos CDNs por fiabilidad) -->
-  <script src="https://unpkg.com/@walletconnect/ethereum-provider@2.16.1/dist/umd/index.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@walletconnect/ethereum-provider@2.16.1/dist/umd/index.min.js"></script>
+  <script src="https://unpkg.com/@walletconnect/ethereum-provider@2.16.1/dist/index.umd.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@walletconnect/ethereum-provider@2.16.1/dist/index.umd.js"></script>
   <script>
     // Normalizar nombre global del UMD en distintos builds
     (function() {
@@ -44,6 +44,53 @@
         }
       } catch (e) {}
     })();
+
+    // Helper: asegurar carga de WC UMD in-flight si algún CDN falló
+    window.__ensureWCLoaded = function ensureWCLoaded() {
+      return new Promise((resolve) => {
+        try {
+          if (window.WalletConnectProvider || window.EthereumProvider || window.WalletConnectEthereumProvider) {
+            return resolve(true);
+          }
+          const cdns = [
+            // 1) Intenta primero un archivo local si existe (puedes colocarlo en ./assets)
+            './assets/walletconnect-ethereum-provider.umd.js',
+            './assets/walletconnect-ethereum-provider.min.js',
+            'https://unpkg.com/@walletconnect/ethereum-provider@2.16.1/dist/index.umd.js',
+            'https://cdn.jsdelivr.net/npm/@walletconnect/ethereum-provider@2.16.1/dist/index.umd.js'
+          ];
+          let done = false;
+          const tryNext = (i) => {
+            if (done || i >= cdns.length) {
+              return resolve(!!(window.WalletConnectProvider || window.EthereumProvider));
+            }
+            const s = document.createElement('script');
+            s.src = cdns[i];
+            s.async = true;
+            s.onload = () => {
+              // Normalizar
+              try {
+                if (!window.WalletConnectProvider && window.EthereumProvider) {
+                  window.WalletConnectProvider = window.EthereumProvider;
+                }
+                if (!window.WalletConnectEthereumProvider && window.WalletConnectProvider) {
+                  window.WalletConnectEthereumProvider = window.WalletConnectProvider;
+                }
+              } catch {}
+              done = true;
+              resolve(true);
+            };
+            s.onerror = () => tryNext(i + 1);
+            document.head.appendChild(s);
+          };
+          tryNext(0);
+          // Timeout de seguridad
+          setTimeout(() => resolve(!!(window.WalletConnectProvider || window.EthereumProvider)), 5000);
+        } catch {
+          resolve(false);
+        }
+      });
+    };
   </script>
 
   <!-- Script de verificación de carga y diagnóstico -->
