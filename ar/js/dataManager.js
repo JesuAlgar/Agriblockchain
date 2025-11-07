@@ -132,11 +132,28 @@ async function getSignerAndContract() {
       if (typeof window.__ensureWCLoaded === 'function') {
         await window.__ensureWCLoaded();
       }
-      const EthereumProviderClass = resolveWCEProviderClass();
-      if (!EthereumProviderClass) {
-        throw new Error('No se detectó wallet. Para usar Trust Wallet:\n\n1. Abre esta página en el navegador de Trust Wallet (DApp Browser)\n2. O escanea el código QR desde Trust Wallet\n3. También puedes usar MetaMask en escritorio');
+
+      // Obtener clase/fábrica del provider
+      const W = window;
+      const candidates = [
+        () => W.WalletConnectEthereumProvider && W.WalletConnectEthereumProvider.init,
+        () => W.EthereumProvider && W.EthereumProvider.init,
+        () => W.WalletConnectProvider && W.WalletConnectProvider.init,
+        () => W.WalletConnectProvider && W.WalletConnectProvider.default && W.WalletConnectProvider.default.init,
+        () => W.WalletConnectEthereumProvider && W.WalletConnectEthereumProvider.default && W.WalletConnectEthereumProvider.default.init,
+        () => W['@walletconnect/ethereum-provider'] && W['@walletconnect/ethereum-provider'].default && W['@walletconnect/ethereum-provider'].default.init
+      ];
+      let initFn = null;
+      for (const get of candidates) {
+        try {
+          const f = get();
+          if (typeof f === 'function') { initFn = f; break; }
+        } catch {}
       }
-      log('[Blockchain] Iniciando WalletConnect Provider...');
+      if (!initFn) {
+        throw new Error('WalletConnect Provider no disponible. Verifica que el script UMD cargó correctamente.');
+      }
+
       // Metadata dinámica para que el dominio coincida exactamente con el actual
       const metaCfg = CONFIG.walletConnect?.metadata || {};
       const appOrigin = (typeof location !== 'undefined' && location.origin) ? location.origin : (metaCfg.url || '');
@@ -151,15 +168,29 @@ async function getSignerAndContract() {
         url: appOrigin,
         icons: iconAbs ? [iconAbs] : []
       };
-      const wcProvider = await EthereumProviderClass.init({
+
+      const wcProvider = await initFn.call(W, {
         projectId: CONFIG.walletConnect.projectId,
         showQrModal: true,
         chains: [chainId],
         metadata: wcMetadata,
         rpcMap: { [chainId]: network.rpcUrl }
       });
-      log('[Blockchain] Solicitando conexión con wallet...');
-      await wcProvider.enable();
+      if (!wcProvider) {
+        throw new Error('WalletConnect init() devolvió undefined');
+      }
+
+      // Habilitar sesión/cuentas
+      if (typeof wcProvider.enable === 'function') {
+        log('[Blockchain] Solicitando conexión con wallet (enable)...');
+        await wcProvider.enable();
+      } else if (typeof wcProvider.request === 'function') {
+        log('[Blockchain] Solicitando conexión con wallet (request accounts)...');
+        await wcProvider.request({ method: 'eth_requestAccounts' });
+      } else {
+        log('[Blockchain] Provider obtenido, pero no expone enable/request', 'warn');
+      }
+
       log('[Blockchain] ✓ Conectado con wallet');
       web3Provider = new ethers.providers.Web3Provider(wcProvider, 'any');
       STATE.blockchainProvider = wcProvider;
