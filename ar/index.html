@@ -80,32 +80,7 @@ SOLUCIONES:
     });
   </script>
   
-  <script>
-    function enterFullscreen() {
-      try {
-        const isMetaMask = /MetaMaskMobile/i.test(navigator.userAgent);
-        if (isMetaMask) return;
-        const elem = document.documentElement;
-        if (elem.requestFullscreen) {
-          const p = elem.requestFullscreen();
-          if (p && p.catch) p.catch(() => {});
-        } else if (elem.webkitRequestFullscreen) {
-          elem.webkitRequestFullscreen();
-        } else if (elem.msRequestFullscreen) {
-          elem.msRequestFullscreen();
-        }
-      } catch (err) {
-        console.log('Fullscreen error:', err);
-      }
-      document.removeEventListener('click', enterFullscreen);
-      document.removeEventListener('touchstart', enterFullscreen);
-    }
-    
-    document.addEventListener('DOMContentLoaded', () => {
-      document.addEventListener('click', enterFullscreen, { once: true });
-      document.addEventListener('touchstart', enterFullscreen, { once: true });
-    });
-  </script>
+  <!-- Pantalla completa se gestiona desde ui.js (botón Fullscreen) -->
 </head>
 <body>
 

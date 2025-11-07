@@ -42,8 +42,17 @@ body {
   position: fixed;
   top: 0;
   left: 0;
-  width: 100%;
-  height: 100%;
+  width: 100vw;
+  height: 100dvh; /* Mejor en móviles que 100vh */
+  overflow: hidden;
+}
+
+/* Pantalla completa simulada (cuando el navegador no lo soporta) */
+body.simulated-fullscreen #container {
+  width: 100vw;
+  height: 100dvh;
+}
+body.simulated-fullscreen {
   overflow: hidden;
 }
 
@@ -84,6 +93,12 @@ body {
   padding: 16px 20px;
   background: linear-gradient(to bottom, rgba(11, 15, 20, 0.9), rgba(11, 15, 20, 0));
   backdrop-filter: blur(10px);
+}
+
+/* Ocultar cabecera en modo pantalla completa (nativo o simulado) */
+body.is-fullscreen .header,
+body.simulated-fullscreen .header {
+  display: none !important;
 }
 
 .header-info h1 {
