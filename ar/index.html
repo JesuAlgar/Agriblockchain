@@ -36,9 +36,8 @@
     window.process = window.process || { env: {} };
   </script>
 
-  <!-- WalletConnect v2 Ethereum Provider UMD (dos CDNs por fiabilidad) -->
+  <!-- WalletConnect v2 Ethereum Provider UMD (una sola carga para evitar duplicados) -->
   <script src="https://unpkg.com/@walletconnect/ethereum-provider@2.16.1/dist/index.umd.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@walletconnect/ethereum-provider@2.16.1/dist/index.umd.js"></script>
   <script>
     // Normalizar nombre global del UMD en distintos builds
     (function() {
@@ -56,20 +55,33 @@
     window.__ensureWCLoaded = function ensureWCLoaded() {
       return new Promise((resolve) => {
         try {
-          if (window.WalletConnectProvider || window.EthereumProvider || window.WalletConnectEthereumProvider) {
+          if (window.__wcLoaded || window.WalletConnectProvider || window.EthereumProvider || window.WalletConnectEthereumProvider) {
+            window.__wcLoaded = true;
             return resolve(true);
           }
+          if (window.__wcLoading) {
+            // Esperar a que termine otro intento en curso
+            const iv = setInterval(() => {
+              if (window.__wcLoaded || window.WalletConnectProvider || window.EthereumProvider || window.WalletConnectEthereumProvider) {
+                clearInterval(iv);
+                window.__wcLoaded = true;
+                resolve(true);
+              }
+            }, 200);
+            setTimeout(() => { clearInterval(iv); resolve(!!(window.WalletConnectProvider || window.EthereumProvider)); }, 4000);
+            return;
+          }
+          window.__wcLoading = true;
           const cdns = [
-            // 1) Intenta primero un archivo local si existe (puedes colocarlo en ./assets)
-            './assets/walletconnect-ethereum-provider.umd.js',
-            './assets/walletconnect-ethereum-provider.min.js',
             'https://unpkg.com/@walletconnect/ethereum-provider@2.16.1/dist/index.umd.js',
-            'https://cdn.jsdelivr.net/npm/@walletconnect/ethereum-provider@2.16.1/dist/index.umd.js'
+            'https://cdn.jsdelivr.net/npm/@walletconnect/ethereum-provider@2.16.1/dist/index.umd.js',
+            './assets/walletconnect-ethereum-provider.umd.js'
           ];
           let done = false;
           const tryNext = (i) => {
             if (done || i >= cdns.length) {
-              return resolve(!!(window.WalletConnectProvider || window.EthereumProvider));
+              window.__wcLoading = false;
+              return resolve(!!(window.WalletConnectProvider || window.EthereumProvider || window.WalletConnectEthereumProvider));
             }
             const s = document.createElement('script');
             s.src = cdns[i];
@@ -85,6 +97,8 @@
                 }
               } catch {}
               done = true;
+              window.__wcLoaded = true;
+              window.__wcLoading = false;
               resolve(true);
             };
             s.onerror = () => tryNext(i + 1);
@@ -92,7 +106,7 @@
           };
           tryNext(0);
           // Timeout de seguridad
-          setTimeout(() => resolve(!!(window.WalletConnectProvider || window.EthereumProvider)), 5000);
+          setTimeout(() => { window.__wcLoading = false; resolve(!!(window.WalletConnectProvider || window.EthereumProvider || window.WalletConnectEthereumProvider)); }, 5000);
         } catch {
           resolve(false);
         }

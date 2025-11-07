@@ -3,7 +3,7 @@
  * ✅ v5: skipWaiting, clientsClaim, exclusión de metamask-sdk
  */
 
-const CACHE_NAME = 'ar-planta-v5'; // ✅ Bumped para forzar actualización
+const CACHE_NAME = 'ar-planta-v6'; // ✅ Bumped para forzar actualización
 const urlsToCache = [
   './',
   './index.html',
