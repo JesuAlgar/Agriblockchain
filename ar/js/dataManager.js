@@ -173,6 +173,19 @@ async function getSignerAndContract() {
         projectId: CONFIG.walletConnect.projectId,
         showQrModal: true,
         chains: [chainId],
+        optionalChains: [chainId],
+        methods: [
+          'eth_sendTransaction',
+          'eth_sign',
+          'personal_sign',
+          'eth_signTypedData',
+          'eth_signTypedData_v4'
+        ],
+        optionalMethods: [
+          'wallet_switchEthereumChain',
+          'wallet_addEthereumChain'
+        ],
+        events: ['chainChanged', 'accountsChanged'],
         metadata: wcMetadata,
         rpcMap: { [chainId]: network.rpcUrl }
       });
