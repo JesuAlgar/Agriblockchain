@@ -6,6 +6,8 @@ import { CONFIG, getPlantIdFromURL, STATE } from './config.js';
 import { log } from './utils.js';
 
 const plantDataCache = new Map();
+let metaMaskSDKInstance = null;
+let metaMaskSDKProvider = null;
 
 const FALLBACK_DATA = {
   eventType: "MONITOR",
@@ -25,6 +27,67 @@ const FALLBACK_DATA = {
   plantingDepth_cm: 0.0,
   germinationRate_pct: 0
 };
+
+async function waitForMetaMaskSDK(timeout = 4000) {
+  if (window.MetaMaskSDK) return true;
+  return new Promise(resolve => {
+    const iv = setInterval(() => {
+      if (window.MetaMaskSDK) {
+        clearInterval(iv);
+        resolve(true);
+      }
+    }, 100);
+    setTimeout(() => {
+      clearInterval(iv);
+      resolve(!!window.MetaMaskSDK);
+    }, timeout);
+  });
+}
+
+async function ensureMetaMaskSDKProvider() {
+  if (window.ethereum) return window.ethereum;
+  if (metaMaskSDKProvider) return metaMaskSDKProvider;
+
+  const ready = await waitForMetaMaskSDK();
+  if (!ready) {
+    log('[MetaMaskSDK] ? No se cargó el script del SDK', 'warn');
+    return null;
+  }
+
+  if (!metaMaskSDKInstance) {
+    try {
+      const metadata = CONFIG.walletConnect?.metadata || {};
+      metaMaskSDKInstance = new window.MetaMaskSDK({
+        dappMetadata: {
+          name: metadata.name || 'AgriBlockchain',
+          url: metadata.url || window.location.origin
+        },
+        preferMobile: true,
+        useDeeplink: true,
+        logging: { developerMode: true },
+        openDeeplink: (link) => {
+          log('[MetaMaskSDK] → Abriendo deeplink MetaMask');
+          window.location.href = link;
+        }
+      });
+      log('[MetaMaskSDK] ✓ Instancia creada');
+    } catch (err) {
+      log('[MetaMaskSDK] ? Error iniciando SDK: ' + err.message, 'error');
+      metaMaskSDKInstance = null;
+      return null;
+    }
+  }
+
+  try {
+    metaMaskSDKProvider = metaMaskSDKInstance.getProvider();
+    window.ethereum = metaMaskSDKProvider;
+    log('[MetaMaskSDK] ✓ Provider listo en window.ethereum');
+    return metaMaskSDKProvider;
+  } catch (err) {
+    log('[MetaMaskSDK] ? No se pudo obtener provider: ' + err.message, 'error');
+    return null;
+  }
+}
 
 // --------------------------------------------
 // Provider / Signer via MetaMask or WalletConnect
@@ -82,6 +145,10 @@ async function getSignerAndContract() {
 
     let web3Provider;
 
+    if (!window.ethereum) {
+      await ensureMetaMaskSDKProvider();
+    }
+
     // 1. Detectar si Trust Wallet o MetaMask inyectaron window.ethereum
     if (window.ethereum) {
       log('[Blockchain] ✓ Detectado window.ethereum (Trust Wallet/MetaMask)');
@@ -124,6 +191,7 @@ async function getSignerAndContract() {
       await window.ethereum.request({ method: 'eth_requestAccounts' });
       // Envolver en ethers
       web3Provider = new ethers.providers.Web3Provider(window.ethereum, 'any');
+      STATE.blockchainProvider = window.ethereum;
       // Verificar red tras conectar (vía ethers getNetwork para evitar formatos distintos)
       try {
         const net = await web3Provider.getNetwork();
