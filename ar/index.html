@@ -184,6 +184,7 @@ SOLUCIONES:
       <button class="btn-control btn-zoom" id="btnZoomReset" title="Reset zoom">Reset</button>
       <button class="btn-control" id="btnWasmToggle" title="Backend TFJS">TF</button>
       <button class="btn-control" id="btnSaveChain" title="Guardar en blockchain">BC</button>
+      <button class="btn-control" id="btnEditJson" title="Editar JSON crudo">JSON</button>
       <button class="btn-control" id="btnTheme" title="Cambiar tema">Theme</button>
     </div>
   </div>
@@ -291,6 +292,21 @@ SOLUCIONES:
           <button type="submit" class="btn-control" id="btnConfirmSave" style="width:auto;padding:8px 12px">Guardar</button>
         </div>
       </form>
+    </div>
+  </div>
+
+  <!-- MODAL EDITOR JSON SIMPLE -->
+  <div class="modal-overlay hidden" id="jsonModal">
+    <div class="modal">
+      <h2 style="margin-bottom:12px">Editar JSON y guardar</h2>
+      <p style="font-size:0.9rem;color:var(--muted);margin-bottom:8px">
+        Edita el objeto JSON completo. Al guardar se abrir� MetaMask/WalletConnect en tu m�vil para firmar la transacci�n.
+      </p>
+      <textarea id="jsonEditor" class="json-editor" spellcheck="false" style="width:100%;min-height:220px;margin-bottom:12px;font-family:monospace;font-size:0.9rem;"></textarea>
+      <div class="form-actions">
+        <button type="button" class="btn-control" id="btnJsonCancel" style="width:auto;padding:8px 12px">Cancelar</button>
+        <button type="button" class="btn-control" id="btnJsonSave" style="width:auto;padding:8px 12px">Guardar JSON</button>
+      </div>
     </div>
   </div>
 

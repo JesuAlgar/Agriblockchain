@@ -5,9 +5,9 @@
 import { log } from './utils.js';
 import { startCamera, increaseZoom, decreaseZoom, resetZoom, getCurrentZoom } from './camera.js';
 import { loadModel, detect } from './detector.js';
-import { savePlantData } from './dataManager.js';
+import { savePlantData, loadPlantData } from './dataManager.js';
 import { toggleTheme, toggleFullscreen, showAlert } from './ui.js';
-import { STATE } from './config.js';
+import { STATE, getPlantIdFromURL } from './config.js';
 
 // --------------------------------------------
 // Arranque principal
@@ -71,10 +71,18 @@ function wireUI() {
   const btnSaveChain = byId('btnSaveChain');
   if (btnSaveChain) btnSaveChain.addEventListener('click', openSaveModal);
 
+  const btnEditJson = byId('btnEditJson');
+  if (btnEditJson) btnEditJson.addEventListener('click', openJsonModal);
+
   const btnConfirmSave = byId('btnConfirmSave');
   const btnCancelSave = byId('btnCancelSave');
   if (btnConfirmSave) btnConfirmSave.addEventListener('click', handleConfirmSave);
   if (btnCancelSave) btnCancelSave.addEventListener('click', () => toggleSaveModal(false));
+
+  const btnJsonSave = byId('btnJsonSave');
+  const btnJsonCancel = byId('btnJsonCancel');
+  if (btnJsonSave) btnJsonSave.addEventListener('click', handleJsonSave);
+  if (btnJsonCancel) btnJsonCancel.addEventListener('click', () => toggleJsonModal(false));
 }
 
 function updateZoomIndicator() {
@@ -100,6 +108,27 @@ function openSaveModal() {
 
 function toggleSaveModal(show) {
   const modal = document.getElementById('saveModal');
+  if (!modal) return;
+  modal.classList[show ? 'remove' : 'add']('hidden');
+}
+
+async function openJsonModal() {
+  const editor = document.getElementById('jsonEditor');
+  if (!editor) return;
+
+  try {
+    editor.value = 'Cargando datos...';
+    const data = await loadPlantData(0);
+    editor.value = JSON.stringify(data, null, 2);
+  } catch (err) {
+    editor.value = JSON.stringify({ error: 'No se pudieron cargar los datos base', reason: err?.message || err }, null, 2);
+  }
+
+  toggleJsonModal(true);
+}
+
+function toggleJsonModal(show) {
+  const modal = document.getElementById('jsonModal');
   if (!modal) return;
   modal.classList[show ? 'remove' : 'add']('hidden');
 }
@@ -130,7 +159,7 @@ async function handleConfirmSave(e) {
       germinationRate_pct: parseInt(get('f_germinationRate') || '80') || 80
     };
 
-    const plantId = 'planta01';
+    const plantId = getPlantIdFromURL();
     showAlert('Enviando a blockchain...', 'warning');
     await savePlantData(plantId, data);
     showAlert('Datos guardados en blockchain', 'success');
@@ -143,6 +172,44 @@ async function handleConfirmSave(e) {
   }
 }
 
+async function handleJsonSave(e) {
+  e.preventDefault();
+  const btn = e.currentTarget;
+  const editor = document.getElementById('jsonEditor');
+  if (!editor) return;
+
+  try {
+    if (btn) {
+      btn.disabled = true;
+      btn.textContent = 'Guardando...';
+    }
+
+    let parsed;
+    try {
+      parsed = JSON.parse(editor.value);
+      if (typeof parsed !== 'object' || Array.isArray(parsed) || !parsed) {
+        throw new Error('El JSON debe ser un objeto con claves/valores');
+      }
+    } catch (jsonErr) {
+      throw new Error('JSON inv�lido: ' + jsonErr.message);
+    }
+
+    const plantId = getPlantIdFromURL();
+    showAlert('Abriendo MetaMask para guardar JSON...', 'warning');
+    await savePlantData(plantId, parsed);
+    showAlert('JSON guardado en blockchain', 'success');
+    toggleJsonModal(false);
+  } catch (err) {
+    log('Error guardando JSON: ' + err.message, 'error');
+    showAlert('Error guardando JSON: ' + err.message, 'danger');
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = 'Guardar JSON';
+    }
+  }
+}
+
 // --------------------------------------------
 // Arranque
 // --------------------------------------------
@@ -151,4 +218,3 @@ if (document.readyState === 'loading') {
 } else {
   init();
 }
-
