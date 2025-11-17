@@ -93,13 +93,29 @@ async function ensureMetaMaskSDKProvider() {
 
   try {
     metaMaskSDKProvider = metaMaskSDKInstance.getProvider();
-    window.ethereum = metaMaskSDKProvider;
-    log('[MetaMaskSDK] ✓ Provider listo en window.ethereum');
-    return metaMaskSDKProvider;
   } catch (err) {
-    log('[MetaMaskSDK] ? No se pudo obtener provider: ' + err.message, 'error');
+    log('[MetaMaskSDK] ? getProvider falló: ' + err.message, 'warn');
+    metaMaskSDKProvider = null;
+  }
+
+  if (!metaMaskSDKProvider && typeof metaMaskSDKInstance.connect === 'function') {
+    log('[MetaMaskSDK] Intentando metaMaskSDK.connect() para activar provider...');
+    try {
+      await metaMaskSDKInstance.connect();
+      metaMaskSDKProvider = metaMaskSDKInstance.getProvider();
+    } catch (err) {
+      log('[MetaMaskSDK] ? Error en connect(): ' + err.message, 'error');
+    }
+  }
+
+  if (!metaMaskSDKProvider) {
+    log('[MetaMaskSDK] ? No se pudo obtener provider activo', 'error');
     return null;
   }
+
+  window.ethereum = metaMaskSDKProvider;
+  log('[MetaMaskSDK] ✓ Provider listo en window.ethereum');
+  return metaMaskSDKProvider;
 }
 
 // --------------------------------------------
