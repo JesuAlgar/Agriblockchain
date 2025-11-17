@@ -28,6 +28,14 @@ const FALLBACK_DATA = {
   germinationRate_pct: 0
 };
 
+function resolveMetaMaskSDKClass() {
+  const sdk = window.MetaMaskSDK;
+  if (!sdk) return null;
+  if (typeof sdk === 'function') return sdk;
+  if (sdk.default && typeof sdk.default === 'function') return sdk.default;
+  return null;
+}
+
 async function waitForMetaMaskSDK(timeout = 4000) {
   if (window.MetaMaskSDK) return true;
   return new Promise(resolve => {
@@ -57,7 +65,12 @@ async function ensureMetaMaskSDKProvider() {
   if (!metaMaskSDKInstance) {
     try {
       const metadata = CONFIG.walletConnect?.metadata || {};
-      metaMaskSDKInstance = new window.MetaMaskSDK({
+      const SDKClass = resolveMetaMaskSDKClass();
+      if (!SDKClass) {
+        log('[MetaMaskSDK] ? No se pudo resolver la clase del SDK', 'error');
+        return null;
+      }
+      metaMaskSDKInstance = new SDKClass({
         dappMetadata: {
           name: metadata.name || 'AgriBlockchain',
           url: metadata.url || window.location.origin
