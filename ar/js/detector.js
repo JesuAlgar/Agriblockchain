@@ -269,7 +269,7 @@ export async function detect() {
     hideInactivePanels(activePanels);
 
   } catch (err) {
-    log(`Error en detección: ${err.message}`, 'error');
+    log(`Error en detección : ${err.message}`, 'error');
   }
 
   // Continuar loop
