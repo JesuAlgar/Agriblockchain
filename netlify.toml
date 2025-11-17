@@ -35,3 +35,5 @@
   from = "/"
   to = "/index.html"
   status = 200
+
+# Nota: actualización menor para forzar un nuevo deploy.
