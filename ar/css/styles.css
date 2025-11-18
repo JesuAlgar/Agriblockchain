@@ -399,6 +399,58 @@ body.is-fullscreen .header {
   word-break: break-word;
 }
 
+.event-toggle {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 10px 0;
+}
+
+.event-toggle button {
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: transparent;
+  color: var(--text);
+  padding: 6px 10px;
+  border-radius: 6px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: background 0.2s ease, color 0.2s ease;
+}
+
+.event-toggle button.active {
+  background: var(--primary);
+  color: #041014;
+}
+
+.event-details {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.event-details-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 13px;
+  padding: 4px 0;
+  border-bottom: 1px dashed rgba(255, 255, 255, 0.1);
+}
+
+.event-details-row:last-child {
+  border-bottom: none;
+}
+
+.event-details-label {
+  color: var(--muted);
+  margin-right: 8px;
+}
+
+.event-details-value {
+  font-weight: 500;
+  color: var(--text);
+  text-align: right;
+}
+
 .data-value-small {
   font-size: 13px;
   font-weight: 400;

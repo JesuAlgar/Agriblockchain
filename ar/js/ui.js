@@ -5,6 +5,53 @@
 import { CONFIG, STATE } from './config.js';
 import { getCachedPlantData } from './dataManager.js';
 
+const EVENT_LABELS = {
+  SEEDING_EVENT: 'Seeding',
+  HARVEST_EVENT: 'Harvest',
+  STORAGE_EVENT: 'Storage',
+  TRANSPORT_EVENT: 'Transport',
+  SALES_EVENT: 'Sales'
+};
+
+const EVENT_FIELD_MAP = {
+  SEEDING_EVENT: [
+    { label: 'Seed Lot', field: 'seed_LotId' },
+    { label: 'Variedad', field: 'seedVariety' },
+    { label: 'Proveedor', field: 'seedSupplier' },
+    { label: 'Método', field: 'plantingMethod' },
+    { label: 'Espaciado (cm)', field: 'rowSpacing_cm' },
+    { label: 'Profundidad (cm)', field: 'plantingDepth_cm' },
+    { label: 'Germinación (%)', field: 'germinationRate_pct' }
+  ],
+  HARVEST_EVENT: [
+    { label: 'Nº Cosechas', field: 'numberOfHarvests' },
+    { label: 'Peso hojas (g)', field: 'leafWeight_g' },
+    { label: 'Área hojas (cm²)', field: 'leafArea_cm2' },
+    { label: 'Peso seco (g)', field: 'dryWeight_g' },
+    { label: 'Fenólicos (mg/Kg)', field: 'phenolicComp_mgKg' }
+  ],
+  STORAGE_EVENT: [
+    { label: 'Ubicación', field: 'locationId' },
+    { label: 'Origen', field: 'sourceLatLon' },
+    { label: 'Temp (°C)', field: 'temperature_C' },
+    { label: 'Humedad (%)', field: 'humidity_pct' },
+    { label: 'Duración (h)', field: 'duration_h' }
+  ],
+  TRANSPORT_EVENT: [
+    { label: 'Origen', field: 'sourceLatLon' },
+    { label: 'Destino', field: 'destinationLatLon' },
+    { label: 'Vehículo', field: 'vehicleType' },
+    { label: 'Condición', field: 'transportCondition' },
+    { label: 'Duración (h)', field: 'duration_h' }
+  ],
+  SALES_EVENT: [
+    { label: 'Comprador', field: 'buyerId' },
+    { label: 'Ubicación venta', field: 'saleLocationId' },
+    { label: 'Cantidad (kg)', field: 'quantity_kg' },
+    { label: 'Precio (€/kg)', field: 'price_EURkg' }
+  ]
+};
+
 /**
  * Muestra una alerta flotante
  */
@@ -91,6 +138,7 @@ function createPanelStructure(panelId) {
   const panel = document.createElement('div');
   panel.id = panelId;
   panel.className = 'data-panel';
+  panel.dataset.activeEvent = 'HARVEST_EVENT';
   
   panel.innerHTML = `
     <div class="plant-title">
@@ -251,9 +299,29 @@ function createPanelStructure(panelId) {
         </div>
       </div>
     </div>
+
+    <div class="event-toggle" data-event-toggle>
+      ${Object.entries(EVENT_LABELS).map(([type, label]) => (
+        `<button type="button" data-event-view="${type}">${label}</button>`
+      )).join('')}
+    </div>
+
+    <div class="event-details" data-event-details>
+      <div class="event-details-row">Selecciona un evento</div>
+    </div>
   `;
-  
+  attachEventToggleHandlers(panel);
   return panel;
+}
+
+function attachEventToggleHandlers(panel) {
+  const buttons = panel.querySelectorAll('[data-event-view]');
+  buttons.forEach(btn => {
+    btn.addEventListener('click', () => {
+      panel.dataset.activeEvent = btn.dataset.eventView;
+      updateEventDetails(panel);
+    });
+  });
 }
 
 /**
@@ -309,6 +377,41 @@ function updatePanelValues(panel, data, confidence, plantIndex) {
   
   panel.querySelector('[data-field="timestamp"]').textContent = 
     formatTimestamp(data.timestamp);
+
+  panel._currentData = data;
+  updateEventDetails(panel);
+}
+
+function updateEventDetails(panel) {
+  const container = panel.querySelector('[data-event-details]');
+  if (!container) return;
+  const data = panel._currentData || {};
+  let active = panel.dataset.activeEvent || data.eventType || 'HARVEST_EVENT';
+  if (!EVENT_FIELD_MAP[active]) {
+    active = 'HARVEST_EVENT';
+  }
+  panel.dataset.activeEvent = active;
+
+  const buttons = panel.querySelectorAll('[data-event-view]');
+  buttons.forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.eventView === active);
+  });
+
+  const fields = EVENT_FIELD_MAP[active] || [];
+  if (!fields.length) {
+    container.innerHTML = '<div class="event-details-row">No hay datos para este evento.</div>';
+    return;
+  }
+
+  const html = fields.map(field => {
+    const value = data[field.field];
+    return `
+      <div class="event-details-row">
+        <span class="event-details-label">${field.label}</span>
+        <span class="event-details-value">${formatValue(value)}</span>
+      </div>`;
+  }).join('');
+  container.innerHTML = html || '<div class="event-details-row">No hay datos</div>';
 }
 
 /**
