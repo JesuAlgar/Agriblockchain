@@ -533,6 +533,44 @@ body.is-fullscreen .header {
   color: var(--text);
 }
 
+.form-grid select {
+  margin-top: 4px;
+  padding: 8px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--text);
+  font-size: 14px;
+}
+
+.form-grid label.full {
+  grid-column: span 2;
+}
+
+.form-section {
+  grid-column: span 2;
+  padding: 8px 10px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.02);
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 10px;
+}
+
+.form-section.hidden {
+  display: none;
+}
+
+.section-title {
+  grid-column: span 2;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--primary);
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+}
+
 .form-actions {
   display: flex;
   justify-content: flex-end;

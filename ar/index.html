@@ -245,65 +245,118 @@ SOLUCIONES:
             <input type="text" id="f_eventId" readonly>
           </label>
           <label>
-            <span>batchId (auto)</span>
-            <input type="text" id="f_batchId" readonly>
+            <span>batchId</span>
+            <input type="text" id="f_batchId" placeholder="BATCH-...">
           </label>
           <label>
             <span>timestamp (auto)</span>
             <input type="text" id="f_timestamp" readonly>
           </label>
           <label>
-            <span>lotCode (auto)</span>
-            <input type="text" id="f_lotCode" readonly>
+            <span>lotCode</span>
+            <input type="text" id="f_lotCode" placeholder="LOT-...">
           </label>
-          <label>
-            <span>eventType</span>
-            <input type="text" id="f_eventType" placeholder="PLANTING / SEEDING / ...">
+          <label class="full">
+            <span>Tipo de evento</span>
+            <select id="f_eventType">
+              <option value="HARVEST_EVENT">Harvest event</option>
+              <option value="STORAGE_EVENT">Storage event</option>
+              <option value="TRANSPORT_EVENT">Transport event</option>
+              <option value="SALES_EVENT">Sales event</option>
+            </select>
           </label>
-          <label>
-            <span>recordedBy</span>
-            <input type="text" id="f_recordedBy" placeholder="device-XYZ">
-          </label>
-          <label>
-            <span>fieldId</span>
-            <input type="text" id="f_fieldId" placeholder="PLOT-1">
-          </label>
-          <label>
-            <span>seed_LotId</span>
-            <input type="text" id="f_seedLotId" placeholder="SEED-LOT-...">
-          </label>
-          <label>
-            <span>seedVariety</span>
-            <input type="text" id="f_seedVariety" placeholder="...">
-          </label>
-          <label>
-            <span>seedSupplier</span>
-            <input type="text" id="f_seedSupplier" placeholder="...">
-          </label>
-          <label>
-            <span>seedTreatment</span>
-            <input type="text" id="f_seedTreatment" placeholder="...">
-          </label>
-          <label>
-            <span>quantity_kg</span>
-            <input type="number" step="0.01" id="f_quantityKg" placeholder="0.0">
-          </label>
-          <label>
-            <span>plantingMethod</span>
-            <input type="text" id="f_plantingMethod" placeholder="...">
-          </label>
-          <label>
-            <span>rowSpacing_cm</span>
-            <input type="number" step="1" id="f_rowSpacing" placeholder="0">
-          </label>
-          <label>
-            <span>plantingDepth_cm</span>
-            <input type="number" step="0.1" id="f_plantingDepth" placeholder="0.0">
-          </label>
-          <label>
-            <span>germinationRate_pct</span>
-            <input type="number" step="1" id="f_germinationRate" placeholder="0">
-          </label>
+
+          <div class="form-section" data-event-section="HARVEST_EVENT">
+            <div class="section-title">Harvest event</div>
+            <label>
+              <span>numberOfHarvests</span>
+              <input type="number" id="f_numberOfHarvests" data-event-input placeholder="0">
+            </label>
+            <label>
+              <span>leafWeight_g</span>
+              <input type="number" step="0.01" id="f_leafWeight" data-event-input placeholder="0">
+            </label>
+            <label>
+              <span>leafArea_cm2</span>
+              <input type="number" step="0.01" id="f_leafArea" data-event-input placeholder="0">
+            </label>
+            <label>
+              <span>dryWeight_g</span>
+              <input type="number" step="0.01" id="f_dryWeight" data-event-input placeholder="0">
+            </label>
+            <label>
+              <span>phenolicComp_mgKg</span>
+              <input type="number" step="0.01" id="f_phenolic" data-event-input placeholder="0">
+            </label>
+          </div>
+
+          <div class="form-section hidden" data-event-section="STORAGE_EVENT">
+            <div class="section-title">Storage event</div>
+            <label>
+              <span>locationId</span>
+              <input type="text" id="f_storageLocation" data-event-input placeholder="STORAGE-01">
+            </label>
+            <label>
+              <span>sourceLatLon</span>
+              <input type="text" id="f_storageSource" data-event-input placeholder="40.4,-3.7">
+            </label>
+            <label>
+              <span>temperature_C</span>
+              <input type="number" step="0.1" id="f_storageTemp" data-event-input placeholder="4">
+            </label>
+            <label>
+              <span>humidity_pct</span>
+              <input type="number" step="0.1" id="f_storageHumidity" data-event-input placeholder="65">
+            </label>
+            <label>
+              <span>duration_h</span>
+              <input type="number" step="0.1" id="f_storageDuration" data-event-input placeholder="12">
+            </label>
+          </div>
+
+          <div class="form-section hidden" data-event-section="TRANSPORT_EVENT">
+            <div class="section-title">Transport event</div>
+            <label>
+              <span>sourceLatLon</span>
+              <input type="text" id="f_transportSource" data-event-input placeholder="40.4,-3.7">
+            </label>
+            <label>
+              <span>destinationLatLon</span>
+              <input type="text" id="f_transportDest" data-event-input placeholder="41.3,-2.1">
+            </label>
+            <label>
+              <span>vehicleType</span>
+              <input type="text" id="f_transportVehicle" data-event-input placeholder="Truck">
+            </label>
+            <label>
+              <span>transportCondition</span>
+              <input type="text" id="f_transportCondition" data-event-input placeholder="Cold-chain">
+            </label>
+            <label>
+              <span>duration_h</span>
+              <input type="number" step="0.1" id="f_transportDuration" data-event-input placeholder="5">
+            </label>
+          </div>
+
+          <div class="form-section hidden" data-event-section="SALES_EVENT">
+            <div class="section-title">Sales event</div>
+            <label>
+              <span>buyerId</span>
+              <input type="text" id="f_salesBuyer" data-event-input placeholder="BUYER-001">
+            </label>
+            <label>
+              <span>saleLocationId</span>
+              <input type="text" id="f_salesLocation" data-event-input placeholder="STORE-001">
+            </label>
+            <label>
+              <span>quantity_kg</span>
+              <input type="number" step="0.01" id="f_salesQuantity" data-event-input placeholder="0.0">
+            </label>
+            <label>
+              <span>price_EURkg</span>
+              <input type="number" step="0.01" id="f_salesPrice" data-event-input placeholder="0.0">
+            </label>
+          </div>
         </div>
 
         <div class="form-actions">
