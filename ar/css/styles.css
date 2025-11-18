@@ -533,6 +533,16 @@ body.is-fullscreen .header {
   color: var(--text);
 }
 
+@media (max-width: 520px) {
+  .form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .form-grid input {
+    width: 100%;
+  }
+}
+
 .form-grid select {
   margin-top: 4px;
   padding: 8px;
