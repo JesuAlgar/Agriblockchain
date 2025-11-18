@@ -8,6 +8,7 @@ import { log } from './utils.js';
 const plantDataCache = new Map();
 let metaMaskSDKInstance = null;
 let metaMaskSDKProvider = null;
+let readOnlyContract = null;
 
 const FALLBACK_DATA = {
   eventType: "MONITOR",
@@ -116,6 +117,40 @@ async function ensureMetaMaskSDKProvider() {
   window.ethereum = metaMaskSDKProvider;
   log('[MetaMaskSDK] ✓ Provider listo en window.ethereum');
   return metaMaskSDKProvider;
+}
+
+async function getReadOnlyContract() {
+  if (readOnlyContract) return readOnlyContract;
+  try {
+    if (typeof ethers === 'undefined') {
+      log('[Blockchain] ? ethers no está disponible para lectura pública', 'warn');
+      return null;
+    }
+    const { contractAddress, contractABI, network } = CONFIG.blockchain;
+    const provider = new ethers.providers.JsonRpcProvider(network.rpcUrl);
+    readOnlyContract = new ethers.Contract(contractAddress, contractABI, provider);
+    return readOnlyContract;
+  } catch (err) {
+    log('[Blockchain] ? No se pudo crear contrato de solo lectura: ' + err.message, 'warn');
+    return null;
+  }
+}
+
+async function fetchBlockchainData(plantId) {
+  try {
+    const contract = await getReadOnlyContract();
+    if (!contract) return null;
+    const json = await contract.getPlantData(plantId);
+    if (!json || typeof json !== 'string' || json.trim().length === 0) {
+      return null;
+    }
+    const data = JSON.parse(json);
+    log('[Blockchain] ✓ Datos leídos de la blockchain para ' + plantId);
+    return data;
+  } catch (err) {
+    log('[Blockchain] ? Error leyendo getPlantData: ' + err.message, 'warn');
+    return null;
+  }
 }
 
 // --------------------------------------------
@@ -399,8 +434,6 @@ export async function savePlantData(plantId, data) {
     log('[Blockchain] Guardando...');
 
     const json = JSON.stringify(data);
-    // Guardado local para reflejar cambios inmediatos en la UI
-    localStorage.setItem('plant_' + plantId, json);
 
     // Enviar a blockchain
     const { contract } = await getSignerAndContract();
@@ -422,12 +455,8 @@ export async function savePlantData(plantId, data) {
 export async function loadPlantData(plantIndex) {
   try {
     const plantId = getPlantIdFromURL();
-    // Primero, datos locales si existen
-    const local = localStorage.getItem('plant_' + plantId);
-    let data;
-    if (local) {
-      data = JSON.parse(local);
-    } else {
+    let data = await fetchBlockchainData(plantId);
+    if (!data) {
       const url = './data/' + encodeURIComponent(plantId) + '.json';
       const response = await fetch(url, { cache: 'no-store' });
       if (!response.ok) return FALLBACK_DATA;

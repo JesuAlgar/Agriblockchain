@@ -7,7 +7,7 @@ import { startCamera, increaseZoom, decreaseZoom, resetZoom, getCurrentZoom } fr
 import { loadModel, detect } from './detector.js';
 import { savePlantData, loadPlantData } from './dataManager.js';
 import { toggleTheme, toggleFullscreen, showAlert } from './ui.js';
-import { STATE, getPlantIdFromURL } from './config.js';
+import { STATE, getPlantIdFromURL, setPlantIdInURL } from './config.js';
 
 // --------------------------------------------
 // Arranque principal
@@ -133,6 +133,13 @@ function toggleJsonModal(show) {
   modal.classList[show ? 'remove' : 'add']('hidden');
 }
 
+function resolvePlantIdFromData(data) {
+  if (data?.batchId && data.batchId.trim().length > 0) {
+    return data.batchId.trim();
+  }
+  return getPlantIdFromURL();
+}
+
 async function handleConfirmSave(e) {
   e.preventDefault();
   const btn = e.currentTarget;
@@ -159,7 +166,12 @@ async function handleConfirmSave(e) {
       germinationRate_pct: parseInt(get('f_germinationRate') || '80') || 80
     };
 
-    const plantId = getPlantIdFromURL();
+    const plantId = resolvePlantIdFromData(data);
+    if (!plantId) {
+      throw new Error('batchId es obligatorio para identificar el lote.');
+    }
+    data.batchId = plantId;
+    setPlantIdInURL(plantId);
     showAlert('Enviando a blockchain...', 'warning');
     await savePlantData(plantId, data);
     showAlert('Datos guardados en blockchain', 'success');
@@ -194,7 +206,12 @@ async function handleJsonSave(e) {
       throw new Error('JSON inv�lido: ' + jsonErr.message);
     }
 
-    const plantId = getPlantIdFromURL();
+    const plantId = resolvePlantIdFromData(parsed);
+    if (!plantId) {
+      throw new Error('El JSON debe incluir "batchId" con un valor no vacío.');
+    }
+    parsed.batchId = plantId;
+    setPlantIdInURL(plantId);
     showAlert('Abriendo MetaMask para guardar JSON...', 'warning');
     await savePlantData(plantId, parsed);
     showAlert('JSON guardado en blockchain', 'success');

@@ -124,6 +124,17 @@ export function getPlantIdFromURL() {
   return params.get('id') || 'planta01';
 }
 
+export function setPlantIdInURL(newId) {
+  try {
+    if (!newId || typeof history === 'undefined') return;
+    const cleanId = newId.trim();
+    if (!cleanId) return;
+    const url = new URL(window.location.href);
+    url.searchParams.set('id', cleanId);
+    history.replaceState({}, '', url);
+  } catch {}
+}
+
 // â­ MEJORADO: Estado global compartido
 export const STATE = {
   currentTheme: 'dark',
