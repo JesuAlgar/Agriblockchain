@@ -260,6 +260,7 @@ SOLUCIONES:
             <span>Tipo de evento</span>
             <select id="f_eventType">
               <option value="HARVEST_EVENT">Harvest event</option>
+              <option value="SEEDING_EVENT">Seeding event</option>
               <option value="STORAGE_EVENT">Storage event</option>
               <option value="TRANSPORT_EVENT">Transport event</option>
               <option value="SALES_EVENT">Sales event</option>
@@ -287,6 +288,38 @@ SOLUCIONES:
             <label>
               <span>phenolicComp_mgKg</span>
               <input type="number" step="0.01" id="f_phenolic" data-event-input placeholder="0">
+            </label>
+          </div>
+
+          <div class="form-section hidden" data-event-section="SEEDING_EVENT">
+            <div class="section-title">Seeding event</div>
+            <label>
+              <span>seedLotId</span>
+              <input type="text" id="f_seedLotSeeding" data-event-input placeholder="SEED-LOT-001">
+            </label>
+            <label>
+              <span>seedVariety</span>
+              <input type="text" id="f_seedVarietySeeding" data-event-input placeholder="Variedad">
+            </label>
+            <label>
+              <span>seedSupplier</span>
+              <input type="text" id="f_seedSupplierSeeding" data-event-input placeholder="Proveedor">
+            </label>
+            <label>
+              <span>plantingMethod</span>
+              <input type="text" id="f_plantingMethodSeeding" data-event-input placeholder="Manual / Hidropónico">
+            </label>
+            <label>
+              <span>rowSpacing_cm</span>
+              <input type="number" step="0.1" id="f_rowSpacingSeeding" data-event-input placeholder="40">
+            </label>
+            <label>
+              <span>plantingDepth_cm</span>
+              <input type="number" step="0.1" id="f_plantingDepthSeeding" data-event-input placeholder="2">
+            </label>
+            <label>
+              <span>germinationRate_pct</span>
+              <input type="number" step="1" id="f_germinationRateSeeding" data-event-input placeholder="90">
             </label>
           </div>
 

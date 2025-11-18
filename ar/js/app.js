@@ -193,6 +193,15 @@ function buildEventPayload() {
       data.dryWeight_g = getFloatValue('f_dryWeight');
       data.phenolicComp_mgKg = getFloatValue('f_phenolic');
       break;
+    case 'SEEDING_EVENT':
+      data.seed_LotId = getInputValue('f_seedLotSeeding');
+      data.seedVariety = getInputValue('f_seedVarietySeeding');
+      data.seedSupplier = getInputValue('f_seedSupplierSeeding');
+      data.plantingMethod = getInputValue('f_plantingMethodSeeding');
+      data.rowSpacing_cm = getFloatValue('f_rowSpacingSeeding');
+      data.plantingDepth_cm = getFloatValue('f_plantingDepthSeeding');
+      data.germinationRate_pct = getFloatValue('f_germinationRateSeeding');
+      break;
     case 'STORAGE_EVENT':
       data.locationId = getInputValue('f_storageLocation');
       data.sourceLatLon = getInputValue('f_storageSource');
