@@ -457,12 +457,31 @@ function updateEventDetails(panel) {
  * ✨ MEJORADO: Crea o actualiza el panel de datos de una planta
  */
 export function createOrUpdatePanel(plantIndex, bbox, confidence, data) {
-  if (!hasHistoryEvents()) {
+  const activeData = getSelectedEventData() || data;
+  if (!activeData) {
     showPanelPlaceholder();
+    const existing = document.getElementById(`panel-${plantIndex}`);
+    if (existing) existing.remove();
+    return null;
   }
-  const existing = document.getElementById(`panel-${plantIndex}`);
-  if (existing) existing.remove();
-  return null;
+
+  const panelId = `panel-${plantIndex}`;
+  let panel = document.getElementById(panelId);
+  if (!panel) {
+    panel = createPanelStructure(panelId);
+    const host = STATE.panelRegion || STATE.container;
+    if (STATE.panelRegion) {
+      const placeholder = STATE.panelRegion.querySelector('.data-panel-placeholder');
+      if (placeholder) placeholder.remove();
+    }
+    host.appendChild(panel);
+  }
+
+  updatePanelValues(panel, activeData, confidence, plantIndex);
+  positionPanel(panel, bbox);
+  if (!panel.classList.contains('visible')) panel.classList.add('visible');
+  checkPanelScroll(panel);
+  return panel;
 }
 
 /**
@@ -779,6 +798,15 @@ function showPanelPlaceholder() {
     placeholder.textContent = 'No hay eventos registrados para esta planta.';
     host.appendChild(placeholder);
   }
+}
+
+function getSelectedEventData() {
+  const selected = STATE.history?.selectedEvent;
+  if (!selected) return null;
+  if (STATE.history?.plantId && selected.plantId && selected.plantId !== STATE.history.plantId) {
+    return null;
+  }
+  return normalizeEventPayload(selected);
 }
 
 /**
