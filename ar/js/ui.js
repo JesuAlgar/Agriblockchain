@@ -4,7 +4,6 @@
 
 import { CONFIG, STATE, getPlantIdFromURL } from './config.js';
 import { getCachedPlantData } from './dataManager.js';
-import { debounce } from './utils.js';
 
 const EVENT_LABELS = {
   SEEDING_EVENT: 'Seeding',
@@ -458,6 +457,12 @@ function updateEventDetails(panel) {
  * ✨ MEJORADO: Crea o actualiza el panel de datos de una planta
  */
 export function createOrUpdatePanel(plantIndex, bbox, confidence, data) {
+  if (!hasHistoryEvents()) {
+    showPanelPlaceholder();
+    const existing = document.getElementById(`panel-${plantIndex}`);
+    if (existing) existing.remove();
+    return null;
+  }
   const panelId = `panel-${plantIndex}`;
   let panel = document.getElementById(panelId);
 
@@ -522,13 +527,13 @@ function positionPanel(panel, bbox) {
 export function hideInactivePanels(activePanelIndices) {
   document.querySelectorAll('.data-panel').forEach(panel => {
     const panelIndex = parseInt(panel.id.split('-')[1]);
-    
+    if (Number.isNaN(panelIndex)) return;
     if (panelIndex !== 0 || !activePanelIndices.has(panelIndex)) {
       panel.classList.remove('visible');
-      
       setTimeout(() => {
-        if (!panel.classList.contains('visible')) {
+        if (!panel.classList.contains('visible') && !hasHistoryEvents()) {
           panel.remove();
+          showPanelPlaceholder();
         }
       }, 500);
     }
@@ -626,10 +631,9 @@ export function initHistoryUI(handlers = {}) {
     });
   }
 
-  const plantInput = document.getElementById('plantSelector');
-  if (plantInput) {
-    plantInput.value = getPlantIdFromURL();
-    plantInput.setAttribute('readonly', 'readonly');
+  const plantLabel = document.getElementById('plantLabel');
+  if (plantLabel) {
+    plantLabel.textContent = getPlantIdFromURL();
   }
 }
 
@@ -642,8 +646,9 @@ export function renderHistoryTimeline(state = {}) {
   }
 
   const plantInput = document.getElementById('plantSelector');
-  if (plantInput && state.plantId && plantInput.value !== state.plantId) {
-    plantInput.value = state.plantId;
+  const plantLabel = document.getElementById('plantLabel');
+  if (plantLabel && state.plantId) {
+    plantLabel.textContent = state.plantId;
   }
 
   const list = document.getElementById('historyList');
@@ -760,6 +765,10 @@ export function showHistoryEventInPanel(event) {
     panel = createPanelStructure('panel-history');
     if (host) host.appendChild(panel);
   }
+  if (host) {
+    const placeholder = host.querySelector('.data-panel-placeholder');
+    if (placeholder) placeholder.remove();
+  }
 
   const normalizedType = (event.eventType || `${event.shortType}_EVENT` || 'HARVEST_EVENT').toUpperCase();
   const payload = normalizeEventPayload(event);
@@ -783,6 +792,22 @@ function normalizeEventPayload(event) {
   payload.timestamp = payload.timestamp || (event.timestamp ? new Date(event.timestamp * 1000).toISOString() : undefined);
   payload.seed_LotId = payload.seed_LotId || payload.seedLotId;
   return payload;
+}
+
+function hasHistoryEvents() {
+  return Array.isArray(STATE.history?.events) && STATE.history.events.length > 0;
+}
+
+function showPanelPlaceholder() {
+  const host = STATE.panelRegion || document.getElementById('panelRegion');
+  if (!host) return;
+  let placeholder = host.querySelector('.data-panel-placeholder');
+  if (!placeholder) {
+    placeholder = document.createElement('div');
+    placeholder.className = 'data-panel-placeholder';
+    placeholder.textContent = 'No hay eventos registrados para esta planta.';
+    host.appendChild(placeholder);
+  }
 }
 
 /**
