@@ -457,7 +457,7 @@ function updateEventDetails(panel) {
  * ✨ MEJORADO: Crea o actualiza el panel de datos de una planta
  */
 export function createOrUpdatePanel(plantIndex, bbox, confidence, data) {
-  const activeData = getSelectedEventData() || data;
+  const activeData = getSelectedEventData();
   if (!activeData) {
     showPanelPlaceholder();
     const existing = document.getElementById(`panel-${plantIndex}`);
