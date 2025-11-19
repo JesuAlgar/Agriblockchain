@@ -459,39 +459,10 @@ function updateEventDetails(panel) {
 export function createOrUpdatePanel(plantIndex, bbox, confidence, data) {
   if (!hasHistoryEvents()) {
     showPanelPlaceholder();
-    const existing = document.getElementById(`panel-${plantIndex}`);
-    if (existing) existing.remove();
-    return null;
   }
-  const panelId = `panel-${plantIndex}`;
-  let panel = document.getElementById(panelId);
-
-  // Crear panel solo si no existe
-  if (!panel) {
-    panel = createPanelStructure(panelId);
-    const host = STATE.panelRegion || STATE.container;
-    if (STATE.panelRegion) {
-      const placeholder = STATE.panelRegion.querySelector('.data-panel-placeholder');
-      if (placeholder) placeholder.remove();
-    }
-    host.appendChild(panel);
-  }
-
-  // Actualizar valores
-  updatePanelValues(panel, data, confidence, plantIndex);
-
-  // Posicionar panel
-  positionPanel(panel, bbox);
-  
-  // Hacer visible con animación
-  if (!panel.classList.contains('visible')) {
-    panel.classList.add('visible');
-  }
-
-  // ✨ NUEVO: Verificar si necesita scroll después de actualizar
-  checkPanelScroll(panel);
-
-  return panel;
+  const existing = document.getElementById(`panel-${plantIndex}`);
+  if (existing) existing.remove();
+  return null;
 }
 
 /**
