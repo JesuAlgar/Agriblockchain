@@ -464,7 +464,12 @@ export function createOrUpdatePanel(plantIndex, bbox, confidence, data) {
   // Crear panel solo si no existe
   if (!panel) {
     panel = createPanelStructure(panelId);
-    STATE.container.appendChild(panel);
+    const host = STATE.panelRegion || STATE.container;
+    if (STATE.panelRegion) {
+      const placeholder = STATE.panelRegion.querySelector('.data-panel-placeholder');
+      if (placeholder) placeholder.remove();
+    }
+    host.appendChild(panel);
   }
 
   // Actualizar valores
@@ -488,6 +493,17 @@ export function createOrUpdatePanel(plantIndex, bbox, confidence, data) {
  * Posiciona el panel en la esquina superior derecha (fijo)
  */
 function positionPanel(panel, bbox) {
+  if (STATE.panelRegion) {
+    panel.classList.remove('floating');
+    panel.style.position = 'static';
+    panel.style.top = panel.style.right = panel.style.left = panel.style.bottom = 'auto';
+    panel.style.maxWidth = '100%';
+    panel.style.maxHeight = 'none';
+    panel.style.overflow = 'visible';
+    return;
+  }
+
+  panel.classList.add('floating');
   panel.style.position = 'fixed';
   panel.style.top = '80px';
   panel.style.right = '10px';
@@ -496,8 +512,6 @@ function positionPanel(panel, bbox) {
   panel.style.transform = 'none';
   panel.style.maxWidth = '280px';
   panel.style.maxHeight = 'calc(100vh - 100px)';
-  
-  // ✨ ASEGURAR QUE EL SCROLL FUNCIONE
   panel.style.overflowY = 'auto';
   panel.style.overflowX = 'hidden';
 }

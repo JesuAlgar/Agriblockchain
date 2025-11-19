@@ -262,34 +262,34 @@ body.is-fullscreen .header {
    ============================================ */
 
 .data-panel {
+  width: 100%;
+  max-width: 360px;
+  background: rgba(5, 10, 15, 0.75);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+  padding: 12px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+  margin: 0 auto 12px;
+  opacity: 1;
+  transform: none;
+  transition: none;
+  z-index: auto;
+}
+
+.data-panel.floating {
   position: fixed;
   top: 80px;
-  right: 4px;
-  width: 200px;
-  max-width: calc(100vw - 20px);
-  
-  /* ✨ SCROLL OPTIMIZADO */
-  max-height: calc(100vh - 100px);
+  right: 12px;
+  max-height: calc(100vh - 120px);
   overflow-y: auto;
-  overflow-x: hidden;
-  -webkit-overflow-scrolling: touch;
-  
-  background: transparent;
-  backdrop-filter: none;
-  border-radius: 12px;
-  border: none;
-  padding: 10px;
-
-  box-shadow: none;
-  
   opacity: 0;
   transform: translateX(20px);
   transition: all 0.3s ease;
-  
   z-index: 1000;
 }
 
-.data-panel.visible {
+.data-panel.floating.visible {
   opacity: 1;
   transform: translateX(0);
 }
@@ -456,12 +456,8 @@ body.is-fullscreen .header {
    ============================================ */
 
 .history-wrapper {
-  position: fixed;
-  left: 12px;
-  bottom: 80px;
-  width: 320px;
-  max-width: calc(100vw - 24px);
-  max-height: calc(100vh - 160px);
+  width: 100%;
+  max-width: 420px;
   padding: 12px;
   backdrop-filter: blur(12px);
   background: rgba(5, 10, 15, 0.75);
@@ -471,7 +467,6 @@ body.is-fullscreen .header {
   display: flex;
   flex-direction: column;
   gap: 10px;
-  z-index: 900;
 }
 
 .history-header {
@@ -625,12 +620,40 @@ body.is-fullscreen .header {
   display: none;
 }
 
-@media (max-width: 600px) {
+.info-columns {
+  width: 100%;
+  max-width: 1100px;
+  margin: 20px auto;
+  padding: 0 12px;
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.data-panel-slot {
+  flex: 1;
+  min-width: 280px;
+}
+
+.data-panel-placeholder {
+  background: rgba(5, 10, 15, 0.6);
+  border-radius: 12px;
+  padding: 20px;
+  text-align: center;
+  color: var(--muted);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+@media (max-width: 1024px) {
+  .info-columns {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .data-panel,
   .history-wrapper {
-    position: static;
-    width: 100%;
-    max-height: none;
-    margin: 12px 0;
+    max-width: 100%;
   }
 }
 

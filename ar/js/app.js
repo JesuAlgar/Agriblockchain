@@ -31,6 +31,7 @@ async function init() {
 
     // Guardar contenedor global para UI
     STATE.container = container;
+    STATE.panelRegion = document.getElementById('panelRegion');
 
     // Enlazar UI
     wireUI();
@@ -161,7 +162,8 @@ async function openJsonModal() {
   try {
     editor.value = 'Cargando datos...';
     const data = await loadPlantData(0);
-    editor.value = JSON.stringify(data, null, 2);
+    const sanitized = sanitizeForEditor(data);
+    editor.value = JSON.stringify(sanitized, null, 2);
   } catch (err) {
     editor.value = JSON.stringify({ error: 'No se pudieron cargar los datos base', reason: err?.message || err }, null, 2);
   }
@@ -187,6 +189,18 @@ function getFloatValue(id) {
 function getIntValue(id) {
   const val = parseInt(getInputValue(id), 10);
   return Number.isFinite(val) ? val : 0;
+}
+
+function sanitizeForEditor(data) {
+  const seen = new WeakSet();
+  return JSON.parse(JSON.stringify(data, (key, value) => {
+    if (key === '__eventHistory') return undefined;
+    if (typeof value === 'object' && value !== null) {
+      if (seen.has(value)) return;
+      seen.add(value);
+    }
+    return value;
+  }));
 }
 
 function buildEventPayload() {

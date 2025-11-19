@@ -182,6 +182,7 @@ export const STATE = {
   lastDetectionTime: 0,
   detectionCount: 0,
   alertShown: new Set(),
+  panelRegion: null,
   
   // â­ NUEVO: Capacidades de zoom
   cameraZoomCapabilities: {
