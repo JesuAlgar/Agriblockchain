@@ -170,6 +170,21 @@ export function setPlantIdInURL(newId) {
   } catch {}
 }
 
+export function getEventIdFromURL() {
+  const params = new URLSearchParams(location.search);
+  return params.get('event');
+}
+
+export function setEventIdInURL(eventId) {
+  try {
+    if (typeof history === 'undefined') return;
+    const url = new URL(window.location.href);
+    if (eventId) url.searchParams.set('event', eventId);
+    else url.searchParams.delete('event');
+    history.replaceState({}, '', url);
+  } catch {}
+}
+
 // â­ MEJORADO: Estado global compartido
 export const STATE = {
   currentTheme: 'dark',
@@ -203,6 +218,7 @@ export const STATE = {
     plantId: null,
     loading: false,
     debug: false,
-    metrics: null
+    metrics: null,
+    pendingEventId: null
   }
 };

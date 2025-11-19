@@ -8,7 +8,7 @@ import { loadModel, detect } from './detector.js';
 import { savePlantData, loadPlantData } from './dataManager.js';
 import { toggleTheme, toggleFullscreen, showAlert, initHistoryUI, renderHistoryTimeline, showTxHashBanner, showHistoryEventInPanel } from './ui.js';
 import { initHistoryModule, subscribeHistory, loadHistoryForPlant, setHistoryFilter, showMoreHistory, selectHistoryEvent, appendHistoricalEvent } from './events.js';
-import { STATE, getPlantIdFromURL, setPlantIdInURL } from './config.js';
+import { STATE, getPlantIdFromURL, setPlantIdInURL, getEventIdFromURL } from './config.js';
 
 // --------------------------------------------
 // Arranque principal
@@ -19,6 +19,7 @@ async function init() {
     const params = new URLSearchParams(location.search);
     const debug = params.get('debug') === '1';
     initHistoryModule({ debug });
+    STATE.history.pendingEventId = getEventIdFromURL() || null;
     subscribeHistory((state) => {
       renderHistoryTimeline(state);
       if (state.selectedEvent) {
@@ -130,8 +131,8 @@ function updateZoomIndicator() {
 function openSaveModal() {
   // Relleno automático básico
   const set = (id, v) => { const el = document.getElementById(id); if (el) el.value = v; };
-  set('f_eventId', 'EVT-' + Date.now());
-  set('f_batchId', 'BATCH-' + Math.random().toString(36).slice(2, 10).toUpperCase());
+  set('f_eventId', generateUlid());
+  set('f_batchId', generateUlid());
   set('f_timestamp', new Date().toISOString());
   set('f_lotCode', 'LOT-' + new Date().getFullYear());
   set('f_eventType', 'HARVEST_EVENT');
@@ -195,6 +196,24 @@ function getFloatValue(id) {
 function getIntValue(id) {
   const val = parseInt(getInputValue(id), 10);
   return Number.isFinite(val) ? val : 0;
+}
+
+function generateUlid() {
+  const ENCODING = '0123456789ABCDEFGHJKMNPQRSTVWXYZ';
+  let ts = Date.now();
+  const timeChars = new Array(10);
+  for (let i = 9; i >= 0; i--) {
+    timeChars[i] = ENCODING[ts % 32];
+    ts = Math.floor(ts / 32);
+  }
+  const randChars = new Array(16);
+  const randomValues = (window.crypto && crypto.getRandomValues)
+    ? crypto.getRandomValues(new Uint8Array(16))
+    : Array.from({ length: 16 }, () => Math.floor(Math.random() * 256));
+  for (let i = 0; i < 16; i++) {
+    randChars[i] = ENCODING[randomValues[i] % 32];
+  }
+  return timeChars.join('') + randChars.join('');
 }
 
 function sanitizeForEditor(data) {
@@ -293,6 +312,9 @@ async function handleConfirmSave(e) {
     setPlantIdInURL(plantId);
     const mode = getSaveMode();
     if (mode === 'history') {
+      if (data.eventId) {
+        STATE.history.pendingEventId = data.eventId;
+      }
       showAlert('Añadiendo evento histórico...', 'warning');
       const txHash = await appendHistoricalEvent(plantId, data.eventType, JSON.stringify(data));
       showTxHashBanner(txHash);
@@ -342,6 +364,9 @@ async function handleJsonSave(e) {
     setPlantIdInURL(plantId);
     const mode = getSaveMode();
     if (mode === 'history') {
+      if (parsed.eventId) {
+        STATE.history.pendingEventId = parsed.eventId;
+      }
       showAlert('Añadiendo evento histórico...', 'warning');
       const txHash = await appendHistoricalEvent(plantId, parsed.eventType || 'CUSTOM', JSON.stringify(parsed));
       showTxHashBanner(txHash);

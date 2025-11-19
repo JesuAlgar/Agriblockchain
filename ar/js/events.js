@@ -2,7 +2,7 @@
 // EVENTOS ON-CHAIN (append-only)
 // ============================================
 
-import { CONFIG, STATE, setPlantIdInURL } from './config.js';
+import { CONFIG, STATE, setPlantIdInURL, setEventIdInURL } from './config.js';
 import { log } from './utils.js';
 
 const HISTORY_STATE = STATE.history;
@@ -90,10 +90,21 @@ export async function loadHistoryForPlant(plantId, { force = false } = {}) {
     HISTORY_STATE.lastBlock = lastBlock;
     HISTORY_STATE.counts = buildCounts(events);
     HISTORY_STATE.visibleCount = Math.min(Math.max(HISTORY_STATE.visibleCount || DEFAULT_VISIBLE, DEFAULT_VISIBLE), events.length || DEFAULT_VISIBLE);
+    const pendingEventId = HISTORY_STATE.pendingEventId;
+    if (pendingEventId) {
+      const match = findEventByEventId(events, pendingEventId);
+      if (match) {
+        HISTORY_STATE.selectedKey = match.key;
+        HISTORY_STATE.selectedEvent = match;
+        setEventIdInURL(match.data?.eventId || null);
+      }
+      HISTORY_STATE.pendingEventId = null;
+    }
     if (!HISTORY_STATE.selectedKey && events.length) {
       const latest = events[events.length - 1];
       HISTORY_STATE.selectedKey = latest.key;
       HISTORY_STATE.selectedEvent = latest;
+      setEventIdInURL(latest.data?.eventId || null);
     }
     HISTORY_STATE.status = `Eventos: ${events.length}`;
     HISTORY_STATE.loading = false;
@@ -113,6 +124,9 @@ export function selectHistoryEvent(key) {
   if (!event) return;
   HISTORY_STATE.selectedKey = key;
   HISTORY_STATE.selectedEvent = event;
+  if (event.data?.eventId) {
+    setEventIdInURL(event.data.eventId);
+  }
   notifyHistory();
 }
 
@@ -129,6 +143,7 @@ export async function appendHistoricalEvent(plantId, eventType, jsonPayload) {
     const latest = HISTORY_STATE.events[HISTORY_STATE.events.length - 1];
     HISTORY_STATE.selectedKey = latest.key;
     HISTORY_STATE.selectedEvent = latest;
+    setEventIdInURL(latest.data?.eventId || null);
     notifyHistory();
   }
   return receipt.hash;
@@ -189,6 +204,9 @@ function mapLog(logEntry) {
     const rawPayload = args.jsonPayload || '{}';
     let parsed = null;
     try { parsed = JSON.parse(rawPayload); } catch { parsed = null; }
+    const derivedEventId = (parsed && parsed.eventId) || args.eventId || logEntry.transactionHash;
+    if (parsed) parsed.eventId = derivedEventId;
+    else parsed = { eventId: derivedEventId };
     return {
       key: `${logEntry.transactionHash}-${Number(args.idx ?? logEntry.index ?? 0)}`,
       plantId,
@@ -233,6 +251,11 @@ function makeCacheKey(plantId) {
   return `${CACHE_PREFIX}:${addr}:${plantId}`;
 }
 
+function findEventByEventId(events, eventId) {
+  if (!eventId) return null;
+  return events.find(evt => (evt.data?.eventId || evt.key) === eventId);
+}
+
 function readCache(key) {
   if (typeof localStorage === 'undefined') return null;
   try {
@@ -254,5 +277,7 @@ function writeCache(key, value) {
 export function changePlantId(newId) {
   if (!newId) return;
   setPlantIdInURL(newId);
+  setEventIdInURL(null);
+  HISTORY_STATE.pendingEventId = null;
   loadHistoryForPlant(newId, { force: true });
 }
