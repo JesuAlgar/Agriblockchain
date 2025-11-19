@@ -627,14 +627,7 @@ export function initHistoryUI(handlers = {}) {
   }
 
   const plantInput = document.getElementById('plantSelector');
-  const plantBtn = document.getElementById('btnHistoryApply');
-  if (plantInput && handlers.onPlantChange) {
-    const debounced = debounce(() => handlers.onPlantChange(plantInput.value.trim()), 450);
-    plantInput.addEventListener('input', debounced);
-    if (plantBtn) {
-      plantBtn.addEventListener('click', () => handlers.onPlantChange(plantInput.value.trim(), { immediate: true }));
-    }
-  }
+  if (plantInput) plantInput.setAttribute('readonly', 'readonly');
 }
 
 export function renderHistoryTimeline(state = {}) {

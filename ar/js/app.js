@@ -102,12 +102,7 @@ function wireUI() {
     onFilterChange: (filter) => setHistoryFilter(filter || 'ALL'),
     onRefresh: () => loadHistoryForPlant(STATE.history.plantId || getPlantIdFromURL(), { force: true }),
     onLoadMore: () => showMoreHistory(),
-    onSelectEvent: (key) => selectHistoryEvent(key),
-    onPlantChange: (value) => {
-      if (!value) return;
-      setPlantIdInURL(value);
-      loadHistoryForPlant(value, { force: true });
-    }
+    onSelectEvent: (key) => selectHistoryEvent(key)
   });
 }
 
