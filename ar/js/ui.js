@@ -4,6 +4,7 @@
 
 import { CONFIG, STATE } from './config.js';
 import { getCachedPlantData } from './dataManager.js';
+import { debounce } from './utils.js';
 
 const EVENT_LABELS = {
   SEEDING_EVENT: 'Seeding',
@@ -12,6 +13,17 @@ const EVENT_LABELS = {
   TRANSPORT_EVENT: 'Transport',
   SALES_EVENT: 'Sales'
 };
+
+const HISTORY_FILTER_LABELS = {
+  ALL: 'All',
+  SEEDING: 'Seeding',
+  HARVEST: 'Harvest',
+  STORAGE: 'Storage',
+  TRANSPORT: 'Transport',
+  SALES: 'Sales'
+};
+
+const HISTORY_DEFAULT_VISIBLE = 50;
 
 const EVENT_FIELD_MAP = {
   SEEDING_EVENT: [
@@ -568,6 +580,166 @@ export function toggleFullscreen() {
   } else {
     tryExit();
   }
+}
+
+// --------------------------------------------
+// HISTORIAL ON-CHAIN
+// --------------------------------------------
+
+export function initHistoryUI(handlers = {}) {
+  const filters = document.getElementById('historyFilters');
+  if (filters) {
+    filters.addEventListener('click', (ev) => {
+      const btn = ev.target.closest('[data-history-filter]');
+      if (!btn) return;
+      ev.preventDefault();
+      handlers.onFilterChange?.(btn.dataset.historyFilter);
+    });
+  }
+
+  const refreshBtn = document.getElementById('btnHistoryRefresh');
+  if (refreshBtn) refreshBtn.addEventListener('click', () => handlers.onRefresh?.());
+
+  const loadMoreBtn = document.getElementById('btnHistoryLoadMore');
+  if (loadMoreBtn) loadMoreBtn.addEventListener('click', () => handlers.onLoadMore?.());
+
+  const list = document.getElementById('historyList');
+  if (list) {
+    list.addEventListener('click', (ev) => {
+      const card = ev.target.closest('[data-history-key]');
+      if (!card) return;
+      handlers.onSelectEvent?.(card.dataset.historyKey);
+    });
+  }
+
+  const plantInput = document.getElementById('plantSelector');
+  const plantBtn = document.getElementById('btnHistoryApply');
+  if (plantInput && handlers.onPlantChange) {
+    const debounced = debounce(() => handlers.onPlantChange(plantInput.value.trim()), 450);
+    plantInput.addEventListener('input', debounced);
+    if (plantBtn) {
+      plantBtn.addEventListener('click', () => handlers.onPlantChange(plantInput.value.trim(), { immediate: true }));
+    }
+  }
+}
+
+export function renderHistoryTimeline(state = {}) {
+  const statusEl = document.getElementById('historyStatus');
+  if (statusEl) {
+    if (state.error) statusEl.textContent = `⚠️ ${state.error}`;
+    else if (state.loading) statusEl.textContent = 'Cargando eventos...';
+    else statusEl.textContent = state.status || 'Listo';
+  }
+
+  const plantInput = document.getElementById('plantSelector');
+  if (plantInput && state.plantId && plantInput.value !== state.plantId) {
+    plantInput.value = state.plantId;
+  }
+
+  const list = document.getElementById('historyList');
+  if (!list) return;
+
+  const filtered = filterHistoryEvents(state);
+  const limit = state.visibleCount || HISTORY_DEFAULT_VISIBLE;
+  const visible = filtered.slice(Math.max(0, filtered.length - limit));
+
+  if (!visible.length) {
+    list.innerHTML = `<div class="history-empty">${state.loading ? 'Cargando...' : 'No hay eventos.'}</div>`;
+  } else {
+    list.innerHTML = visible.map(evt => renderHistoryCard(evt, state.selectedKey)).join('');
+  }
+
+  const loadMoreBtn = document.getElementById('btnHistoryLoadMore');
+  if (loadMoreBtn) {
+    loadMoreBtn.classList.toggle('hidden', filtered.length <= limit);
+  }
+
+  const filters = document.querySelectorAll('[data-history-filter]');
+  filters.forEach(btn => {
+    const filter = btn.dataset.historyFilter;
+    const label = HISTORY_FILTER_LABELS[filter] || filter;
+    const count = filter === 'ALL'
+      ? (state.events?.length || 0)
+      : (state.counts?.[filter] || 0);
+    btn.textContent = `${label} (${count})`;
+    btn.classList.toggle('active', state.filter === filter);
+  });
+
+  const debugBox = document.getElementById('historyDebug');
+  if (debugBox) {
+    if (state.debug && state.metrics) {
+      const { fromBlock = 0, toBlock = 0, durationMs = 0, requests = [] } = state.metrics;
+      debugBox.classList.remove('hidden');
+      debugBox.innerHTML = `Bloques ${fromBlock}→${toBlock}<br>requests: ${requests.length}<br>tiempo: ${durationMs} ms`;
+    } else {
+      debugBox.classList.add('hidden');
+      debugBox.textContent = '';
+    }
+  }
+}
+
+function filterHistoryEvents(state) {
+  if (!state?.events) return [];
+  if (!state.filter || state.filter === 'ALL') return [...state.events];
+  return state.events.filter(evt => evt.shortType === state.filter);
+}
+
+function renderHistoryCard(evt, selectedKey) {
+  const explorer = CONFIG.blockchain?.explorer || 'https://sepolia.etherscan.io';
+  const date = evt.timestamp ? new Date(evt.timestamp * 1000).toLocaleString('es-ES') : 'sin fecha';
+  const shortAddress = formatAddress(evt.recordedBy);
+  const pretty = evt.data ? JSON.stringify(evt.data, null, 2) : evt.rawPayload;
+  const cls = evt.key === selectedKey ? 'history-card active' : 'history-card';
+  const label = HISTORY_FILTER_LABELS[evt.shortType] || evt.shortType;
+  return `
+    <article class="${cls}" data-history-key="${evt.key}">
+      <header>
+        <span>${label}</span>
+        <span>${date}</span>
+      </header>
+      <div class="history-meta">
+        <a href="${explorer}/tx/${evt.txHash}" target="_blank" rel="noopener">${shortAddress}</a>
+        <span>#${evt.idx}</span>
+      </div>
+        <pre>${escapeHtml(pretty || '{}')}</pre>
+    </article>
+  `;
+}
+
+function escapeHtml(str = '') {
+  return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+function formatAddress(addr = '') {
+  if (!addr) return '--';
+  return addr.slice(0, 6) + '…' + addr.slice(-4);
+}
+
+let txBannerTimeout;
+
+export function showTxHashBanner(hash) {
+  const banner = document.getElementById('txCopyBanner');
+  const hashSpan = document.getElementById('txCopyHash');
+  const copyBtn = document.getElementById('btnCopyTx');
+  if (!banner || !hashSpan || !copyBtn) return;
+  clearTimeout(txBannerTimeout);
+  if (!hash) {
+    banner.classList.add('hidden');
+    return;
+  }
+  hashSpan.textContent = hash;
+  banner.classList.remove('hidden');
+  copyBtn.onclick = async () => {
+    try {
+      await navigator.clipboard.writeText(hash);
+      showAlert('Hash copiado al portapapeles', 'success');
+    } catch (err) {
+      showAlert('No se pudo copiar: ' + err.message, 'danger');
+    }
+  };
+  txBannerTimeout = setTimeout(() => {
+    banner.classList.add('hidden');
+  }, 12000);
 }
 
 /**

@@ -157,7 +157,7 @@ async function getReadOnlyContract() {
       return null;
     }
     const { contractAddress, contractABI, network } = CONFIG.blockchain;
-    const provider = new ethers.providers.JsonRpcProvider(network.rpcUrl);
+    const provider = new ethers.JsonRpcProvider(network.rpcUrl);
     readOnlyContract = new ethers.Contract(contractAddress, contractABI, provider);
     return readOnlyContract;
   } catch (err) {
@@ -284,7 +284,7 @@ async function getSignerAndContract() {
       // Solicitar cuentas
       await window.ethereum.request({ method: 'eth_requestAccounts' });
       // Envolver en ethers
-      web3Provider = new ethers.providers.Web3Provider(window.ethereum, 'any');
+      web3Provider = new ethers.BrowserProvider(window.ethereum, 'any');
       STATE.blockchainProvider = window.ethereum;
       // Verificar red tras conectar (vía ethers getNetwork para evitar formatos distintos)
       try {
@@ -430,7 +430,7 @@ async function getSignerAndContract() {
       }
 
       log('[Blockchain] ✓ Conectado con wallet');
-      web3Provider = new ethers.providers.Web3Provider(wcProvider, 'any');
+      web3Provider = new ethers.BrowserProvider(wcProvider, 'any');
       STATE.blockchainProvider = wcProvider;
 
       // Verificar red después de conectar (sin forzar cambio): instruir al usuario si no es Sepolia
@@ -445,7 +445,7 @@ async function getSignerAndContract() {
       }
     }
 
-    const signer = web3Provider.getSigner();
+    const signer = await web3Provider.getSigner();
     const contract = new ethers.Contract(contractAddress, contractABI, signer);
     STATE.blockchainConnected = true;
     STATE.blockchainContract = contract;

@@ -65,19 +65,17 @@ export const CONFIG = {
     alertCooldown: 30000
   },
   
-  // ConfiguraciÃ³n blockchain
+  // Configuración blockchain (estado actual)
   blockchain: {
     mode: 'BLOCKCHAIN',
-    
     network: {
       name: 'Sepolia',
       chainId: 11155111,
       chainIdHex: '0xaa36a7',
       rpcUrl: 'https://ethereum-sepolia-rpc.publicnode.com'
     },
-    
+    explorer: 'https://sepolia.etherscan.io',
     contractAddress: '0x2299b2eEc07A9c406C2688EeB6c7c74f92e3dA42',
-    
     contractABI: [
       {
         "inputs": [
@@ -104,15 +102,52 @@ export const CONFIG = {
         "type": "function"
       }
     ]
-  }
-  ,
+  },
+  
+  // Contrato de histórico (eventos append-only)
+  events: {
+    contractAddress: 'REPLACE_WITH_DEPLOYED_ADDRESS',
+    abi: [
+      {
+        "anonymous": false,
+        "inputs": [
+          { "indexed": true, "internalType": "string", "name": "plantId", "type": "string" },
+          { "indexed": true, "internalType": "string", "name": "eventType", "type": "string" },
+          { "indexed": true, "internalType": "address", "name": "recordedBy", "type": "address" },
+          { "indexed": false, "internalType": "string", "name": "jsonPayload", "type": "string" },
+          { "indexed": false, "internalType": "uint256", "name": "timestamp", "type": "uint256" },
+          { "indexed": false, "internalType": "uint256", "name": "idx", "type": "uint256" }
+        ],
+        "name": "PlantEvent",
+        "type": "event"
+      },
+      {
+        "inputs": [
+          { "internalType": "string", "name": "plantId", "type": "string" },
+          { "internalType": "string", "name": "eventType", "type": "string" },
+          { "internalType": "string", "name": "jsonPayload", "type": "string" }
+        ],
+        "name": "addPlantEvent",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+      },
+      {
+        "inputs": [{ "internalType": "string", "name": "plantId", "type": "string" }],
+        "name": "getEventCount",
+        "outputs": [{ "internalType": "uint256", "name": "", "type": "uint256" }],
+        "stateMutability": "view",
+        "type": "function"
+      }
+    ]
+  },
   // WalletConnect
   walletConnect: {
     projectId: '52a58f37420c2c8eed772823a7e37667', // Pega aquÃ­ tu Project ID de cloud.walletconnect.com
     metadata: {
       name: 'AgriBlockchain',
       description: 'AR + IA + Blockchain',
-      url: 'https://startling-bublanina-651809.netlify.app', // opcional: tu dominio pÃºblico
+      url: 'https://agriblockchain-uuew.vercel.app',
       icon: './assets/plant.png'
     }
   }
@@ -157,6 +192,16 @@ export const STATE = {
   // Estado blockchain
   blockchainProvider: null,
   blockchainContract: null,
-  blockchainConnected: false
-};
+  blockchainConnected: false,
 
+  history: {
+    events: [],
+    filter: 'ALL',
+    counts: {},
+    lastBlock: 0,
+    plantId: null,
+    loading: false,
+    debug: false,
+    metrics: null
+  }
+};

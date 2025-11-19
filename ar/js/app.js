@@ -6,7 +6,8 @@ import { log } from './utils.js';
 import { startCamera, increaseZoom, decreaseZoom, resetZoom, getCurrentZoom } from './camera.js';
 import { loadModel, detect } from './detector.js';
 import { savePlantData, loadPlantData } from './dataManager.js';
-import { toggleTheme, toggleFullscreen, showAlert } from './ui.js';
+import { toggleTheme, toggleFullscreen, showAlert, initHistoryUI, renderHistoryTimeline, showTxHashBanner } from './ui.js';
+import { initHistoryModule, subscribeHistory, loadHistoryForPlant, setHistoryFilter, showMoreHistory, selectHistoryEvent, appendHistoricalEvent } from './events.js';
 import { STATE, getPlantIdFromURL, setPlantIdInURL } from './config.js';
 
 // --------------------------------------------
@@ -15,6 +16,12 @@ import { STATE, getPlantIdFromURL, setPlantIdInURL } from './config.js';
 async function init() {
   try {
     log('=== Iniciando AR Planta IA ===');
+    const params = new URLSearchParams(location.search);
+    const debug = params.get('debug') === '1';
+    initHistoryModule({ debug });
+    subscribeHistory((state) => {
+      renderHistoryTimeline(state);
+    });
 
     // Referencias DOM
     const video = document.getElementById('camera');
@@ -27,6 +34,9 @@ async function init() {
 
     // Enlazar UI
     wireUI();
+
+    const plantId = getPlantIdFromURL();
+    loadHistoryForPlant(plantId, { force: true });
 
     // Cámara
     log('Cámara: solicitando permisos...');
@@ -86,6 +96,18 @@ function wireUI() {
 
   const eventTypeSelect = byId('f_eventType');
   if (eventTypeSelect) eventTypeSelect.addEventListener('change', updateEventSections);
+
+  initHistoryUI({
+    onFilterChange: (filter) => setHistoryFilter(filter || 'ALL'),
+    onRefresh: () => loadHistoryForPlant(STATE.history.plantId || getPlantIdFromURL(), { force: true }),
+    onLoadMore: () => showMoreHistory(),
+    onSelectEvent: (key) => selectHistoryEvent(key),
+    onPlantChange: (value) => {
+      if (!value) return;
+      setPlantIdInURL(value);
+      loadHistoryForPlant(value, { force: true });
+    }
+  });
 }
 
 function updateZoomIndicator() {
@@ -249,9 +271,18 @@ async function handleConfirmSave(e) {
     }
     data.batchId = plantId;
     setPlantIdInURL(plantId);
-    showAlert('Enviando a blockchain...', 'warning');
-    await savePlantData(plantId, data);
-    showAlert('Datos guardados en blockchain', 'success');
+    const mode = getSaveMode();
+    if (mode === 'history') {
+      showAlert('Añadiendo evento histórico...', 'warning');
+      const txHash = await appendHistoricalEvent(plantId, data.eventType, JSON.stringify(data));
+      showTxHashBanner(txHash);
+      showAlert(`Evento guardado (${txHash.slice(0, 8)}…)`, 'success');
+    } else {
+      showTxHashBanner(null);
+      showAlert('Enviando a blockchain...', 'warning');
+      await savePlantData(plantId, data);
+      showAlert('Datos guardados en blockchain', 'success');
+    }
     toggleSaveModal(false);
   } catch (err) {
     log('Error guardando: ' + err.message, 'error');
@@ -289,9 +320,18 @@ async function handleJsonSave(e) {
     }
     parsed.batchId = plantId;
     setPlantIdInURL(plantId);
-    showAlert('Abriendo MetaMask para guardar JSON...', 'warning');
-    await savePlantData(plantId, parsed);
-    showAlert('JSON guardado en blockchain', 'success');
+    const mode = getSaveMode();
+    if (mode === 'history') {
+      showAlert('Añadiendo evento histórico...', 'warning');
+      const txHash = await appendHistoricalEvent(plantId, parsed.eventType || 'CUSTOM', JSON.stringify(parsed));
+      showTxHashBanner(txHash);
+      showAlert(`Evento guardado (${txHash.slice(0, 8)}…)`, 'success');
+    } else {
+      showTxHashBanner(null);
+      showAlert('Abriendo MetaMask para guardar JSON...', 'warning');
+      await savePlantData(plantId, parsed);
+      showAlert('JSON guardado en blockchain', 'success');
+    }
     toggleJsonModal(false);
   } catch (err) {
     log('Error guardando JSON: ' + err.message, 'error');
@@ -302,6 +342,11 @@ async function handleJsonSave(e) {
       btn.textContent = 'Guardar JSON';
     }
   }
+}
+
+function getSaveMode() {
+  const radio = document.querySelector('input[name="saveMode"]:checked');
+  return radio ? radio.value : 'state';
 }
 
 // --------------------------------------------

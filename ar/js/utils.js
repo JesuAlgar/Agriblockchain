@@ -75,3 +75,11 @@ export function log(message, type = 'info') {
 export function generateId(prefix = 'element') {
   return `${prefix}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 }
+
+export function debounce(fn, delay = 400) {
+  let timeout;
+  return (...args) => {
+    clearTimeout(timeout);
+    timeout = setTimeout(() => fn.apply(null, args), delay);
+  };
+}

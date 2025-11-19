@@ -17,7 +17,7 @@
   <link rel="stylesheet" href="./css/styles.css">
   
   <!-- Ethers.js -->
-  <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/ethers@6.11.1/dist/ethers.umd.min.js"></script>
 
   <!-- MetaMask SDK para deep link en móvil (CDN + fallback local) -->
   <script>
@@ -41,14 +41,7 @@
   
   <!-- TensorFlow.js -->
   <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.11.0"></script>
-  <!-- Eliminado backend WASM para evitar CORS/404; usamos WebGL o CPU -->
   <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd@2.2.3"></script>
-  <script>
-    if (window.tf && tf.wasm && tf.wasm.setWasmPaths) {
-      // Usar el CDN oficial de Google Cloud para los binarios WASM (más estable que algunos CDNs HTTP/3)
-      tf.wasm.setWasmPaths('https://storage.googleapis.com/tfjs-backend-wasm/4.11.0/');
-    }
-  </script>
 
   <!-- Polyfills mínimos para bundles UMD que esperan entorno Node-like -->
   <script>
@@ -231,6 +224,37 @@ SOLUCIONES:
 
   <button class="btn-fullscreen" id="btnFullscreen" title="Pantalla completa" aria-label="Pantalla completa">⛶</button>
 
+  <section class="history-wrapper" id="historyWrapper">
+    <div class="history-header">
+      <div>
+        <h3>Histórico blockchain</h3>
+        <small id="historyStatus">Sin cargar</small>
+      </div>
+      <div class="history-actions">
+        <input type="text" id="plantSelector" placeholder="planta01" aria-label="ID de planta">
+        <button class="btn-control" id="btnHistoryApply" title="Cambiar planta" aria-label="Cambiar planta">✔</button>
+        <button class="btn-control" id="btnHistoryRefresh" title="Refrescar" aria-label="Refrescar histórico">↻</button>
+      </div>
+    </div>
+    <div class="history-filters" id="historyFilters">
+      <button data-history-filter="ALL" class="active">All</button>
+      <button data-history-filter="SEEDING">Seeding</button>
+      <button data-history-filter="HARVEST">Harvest</button>
+      <button data-history-filter="STORAGE">Storage</button>
+      <button data-history-filter="TRANSPORT">Transport</button>
+      <button data-history-filter="SALES">Sales</button>
+    </div>
+    <div class="history-list" id="historyList">
+      <div class="history-empty">No hay eventos cargados.</div>
+    </div>
+    <button class="history-load-more hidden" id="btnHistoryLoadMore">Cargar más</button>
+    <div class="tx-copy hidden" id="txCopyBanner">
+      <span id="txCopyHash">0x...</span>
+      <button type="button" id="btnCopyTx">Copiar hash</button>
+    </div>
+    <div class="history-debug hidden" id="historyDebug"></div>
+  </section>
+
   <!-- FORMULARIO LOGIN -->
   </div>
 
@@ -266,6 +290,17 @@ SOLUCIONES:
               <option value="SALES_EVENT">Sales event</option>
             </select>
           </label>
+
+          <div class="form-row save-mode" id="saveModeToggle">
+            <label>
+              <input type="radio" name="saveMode" value="state" checked>
+              Actualizar estado (setPlantData)
+            </label>
+            <label>
+              <input type="radio" name="saveMode" value="history">
+              Guardar histórico (addPlantEvent)
+            </label>
+          </div>
 
           <div class="form-section" data-event-section="HARVEST_EVENT">
             <div class="section-title">Harvest event</div>
