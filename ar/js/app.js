@@ -107,6 +107,14 @@ function wireUI() {
     onLoadMore: () => showMoreHistory(),
     onSelectEvent: (key) => selectHistoryEvent(key)
   });
+
+  const btnToggleHistory = byId('btnToggleHistory');
+  const historyWrapper = byId('historyWrapper');
+  if (btnToggleHistory && historyWrapper) {
+    btnToggleHistory.addEventListener('click', () => {
+      historyWrapper.classList.toggle('hidden');
+    });
+  }
 }
 
 function updateZoomIndicator() {

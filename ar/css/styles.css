@@ -469,6 +469,10 @@ body.is-fullscreen .header {
   gap: 10px;
 }
 
+.history-wrapper.hidden {
+  display: none;
+}
+
 .history-header {
   display: flex;
   justify-content: space-between;
