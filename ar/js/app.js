@@ -6,7 +6,7 @@ import { log } from './utils.js';
 import { startCamera, increaseZoom, decreaseZoom, resetZoom, getCurrentZoom } from './camera.js';
 import { loadModel, detect } from './detector.js';
 import { savePlantData, loadPlantData } from './dataManager.js';
-import { toggleTheme, toggleFullscreen, showAlert, initHistoryUI, renderHistoryTimeline, showTxHashBanner } from './ui.js';
+import { toggleTheme, toggleFullscreen, showAlert, initHistoryUI, renderHistoryTimeline, showTxHashBanner, showHistoryEventInPanel } from './ui.js';
 import { initHistoryModule, subscribeHistory, loadHistoryForPlant, setHistoryFilter, showMoreHistory, selectHistoryEvent, appendHistoricalEvent } from './events.js';
 import { STATE, getPlantIdFromURL, setPlantIdInURL } from './config.js';
 
@@ -21,6 +21,9 @@ async function init() {
     initHistoryModule({ debug });
     subscribeHistory((state) => {
       renderHistoryTimeline(state);
+      if (state.selectedEvent) {
+        showHistoryEventInPanel(state.selectedEvent);
+      }
     });
 
     // Referencias DOM

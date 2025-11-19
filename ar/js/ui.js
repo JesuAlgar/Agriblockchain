@@ -2,7 +2,7 @@
 // GESTOR DE INTERFAZ DE USUARIO - OPTIMIZADO
 // ============================================
 
-import { CONFIG, STATE } from './config.js';
+import { CONFIG, STATE, getPlantIdFromURL } from './config.js';
 import { getCachedPlantData } from './dataManager.js';
 import { debounce } from './utils.js';
 
@@ -627,7 +627,10 @@ export function initHistoryUI(handlers = {}) {
   }
 
   const plantInput = document.getElementById('plantSelector');
-  if (plantInput) plantInput.setAttribute('readonly', 'readonly');
+  if (plantInput) {
+    plantInput.value = getPlantIdFromURL();
+    plantInput.setAttribute('readonly', 'readonly');
+  }
 }
 
 export function renderHistoryTimeline(state = {}) {
@@ -747,6 +750,39 @@ export function showTxHashBanner(hash) {
   txBannerTimeout = setTimeout(() => {
     banner.classList.add('hidden');
   }, 12000);
+}
+
+export function showHistoryEventInPanel(event) {
+  if (!event || !event.data) return;
+  const host = STATE.panelRegion || STATE.container || document.body;
+  let panel = host ? host.querySelector('.data-panel') : document.querySelector('.data-panel');
+  if (!panel) {
+    panel = createPanelStructure('panel-history');
+    if (host) host.appendChild(panel);
+  }
+
+  const normalizedType = (event.eventType || `${event.shortType}_EVENT` || 'HARVEST_EVENT').toUpperCase();
+  const payload = normalizeEventPayload(event);
+  panel._eventSnapshots = panel._eventSnapshots || {};
+  panel._eventSnapshots[normalizedType] = payload;
+  panel.dataset.activeEvent = normalizedType;
+  panel._confidence = 1;
+  panel._plantIndex = 0;
+  renderGeneralFields(panel, payload, 1, 0);
+  updateEventDetails(panel);
+  panel.classList.add('visible');
+}
+
+function normalizeEventPayload(event) {
+  const payload = { ...(event.data || {}) };
+  payload.eventType = payload.eventType || event.eventType || event.shortType;
+  payload.eventId = payload.eventId || event.key || event.txHash;
+  payload.batchId = payload.batchId || payload.plantId || event.plantId || STATE.history.plantId;
+  payload.lotCode = payload.lotCode || '--';
+  payload.recordedBy = payload.recordedBy || event.recordedBy;
+  payload.timestamp = payload.timestamp || (event.timestamp ? new Date(event.timestamp * 1000).toISOString() : undefined);
+  payload.seed_LotId = payload.seed_LotId || payload.seedLotId;
+  return payload;
 }
 
 /**
