@@ -131,7 +131,8 @@ function updateZoomIndicator() {
 function openSaveModal() {
   // Relleno automático básico
   const set = (id, v) => { const el = document.getElementById(id); if (el) el.value = v; };
-  set('f_eventId', generateUlid());
+  const urlEvent = getEventIdFromURL();
+  set('f_eventId', urlEvent || generateUlid());
   set('f_batchId', generateUlid());
   set('f_timestamp', new Date().toISOString());
   set('f_lotCode', 'LOT-' + new Date().getFullYear());
