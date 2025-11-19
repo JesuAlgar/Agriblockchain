@@ -29,6 +29,36 @@ const FALLBACK_DATA = {
   germinationRate_pct: 0
 };
 
+function getEventHistoryKey(plantId) {
+  return `plant_events_${plantId}`;
+}
+
+function loadEventHistoryMap(plantId) {
+  if (typeof localStorage === 'undefined') return {};
+  try {
+    const raw = localStorage.getItem(getEventHistoryKey(plantId));
+    if (!raw) return {};
+    const parsed = JSON.parse(raw);
+    return typeof parsed === 'object' && parsed !== null ? parsed : {};
+  } catch {
+    return {};
+  }
+}
+
+function saveEventHistoryMap(plantId, map) {
+  if (typeof localStorage === 'undefined') return;
+  try {
+    localStorage.setItem(getEventHistoryKey(plantId), JSON.stringify(map));
+  } catch {}
+}
+
+function storeEventSnapshot(plantId, eventType, data) {
+  if (!eventType) return;
+  const history = loadEventHistoryMap(plantId);
+  history[eventType] = data;
+  saveEventHistoryMap(plantId, history);
+}
+
 function resolveMetaMaskSDKClass() {
   const sdk = window.MetaMaskSDK;
   if (!sdk) return null;
@@ -435,6 +465,11 @@ export async function savePlantData(plantId, data) {
 
     const json = JSON.stringify(data);
 
+    if (typeof localStorage !== 'undefined') {
+      localStorage.setItem('plant_' + plantId, json);
+    }
+    storeEventSnapshot(plantId, data.eventType || 'GENERIC', data);
+
     // Enviar a blockchain
     const { contract } = await getSignerAndContract();
     const tx = await contract.setPlantData(plantId, json);
@@ -455,13 +490,30 @@ export async function savePlantData(plantId, data) {
 export async function loadPlantData(plantIndex) {
   try {
     const plantId = getPlantIdFromURL();
-    let data = await fetchBlockchainData(plantId);
+    let data = null;
+    if (typeof localStorage !== 'undefined') {
+      try {
+        const local = localStorage.getItem('plant_' + plantId);
+        if (local) {
+          data = JSON.parse(local);
+        }
+      } catch {}
+    }
+    if (!data) {
+      data = await fetchBlockchainData(plantId);
+    }
     if (!data) {
       const url = './data/' + encodeURIComponent(plantId) + '.json';
       const response = await fetch(url, { cache: 'no-store' });
       if (!response.ok) return FALLBACK_DATA;
       data = await response.json();
     }
+    const history = loadEventHistoryMap(plantId);
+    if (data.eventType) {
+      history[data.eventType] = data;
+    }
+    data.__eventHistory = history;
+    saveEventHistoryMap(plantId, history);
     plantDataCache.set(plantIndex, { data, lastUpdate: Date.now() });
     return data;
   } catch (error) {

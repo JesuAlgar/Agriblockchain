@@ -324,87 +324,115 @@ function attachEventToggleHandlers(panel) {
   });
 }
 
+function renderGeneralFields(panel, data, confidence, plantIndex) {
+  if (!data) return;
+  panel.querySelector('[data-field="seedVariety"]').textContent =
+    data.seedVariety || `Planta ${Number(plantIndex || 0) + 1}`;
+  panel.querySelector('[data-field="confidence"]').textContent =
+    `${Math.round(Number(confidence || 0) * 100)}%`;
+
+  panel.querySelector('[data-field="eventType"]').textContent =
+    EVENT_LABELS[data.eventType] || data.eventType || '--';
+
+  panel.querySelector('[data-field="eventId"]').textContent =
+    data.eventId || '--';
+
+  panel.querySelector('[data-field="batchId"]').textContent =
+    data.batchId || '--';
+
+  panel.querySelector('[data-field="lotCode"]').textContent =
+    data.lotCode || '--';
+
+  panel.querySelector('[data-field="fieldId"]').textContent =
+    data.fieldId || '--';
+
+  panel.querySelector('[data-field="recordedBy"]').textContent =
+    data.recordedBy || '--';
+
+  panel.querySelector('[data-field="seedLotId"]').textContent =
+    data.seed_LotId || data.seedLotId || '--';
+
+  panel.querySelector('[data-field="seedSupplier"]').textContent =
+    data.seedSupplier || '--';
+
+  panel.querySelector('[data-field="seedTreatment"]').textContent =
+    data.seedTreatment || '--';
+
+  panel.querySelector('[data-field="quantity"]').textContent =
+    formatValue(data.quantity_kg);
+
+  panel.querySelector('[data-field="plantingMethod"]').textContent =
+    data.plantingMethod || '--';
+
+  panel.querySelector('[data-field="rowSpacing"]').textContent =
+    formatValue(data.rowSpacing_cm);
+
+  panel.querySelector('[data-field="plantingDepth"]').textContent =
+    formatValue(data.plantingDepth_cm);
+
+  panel.querySelector('[data-field="germinationRate"]').textContent =
+    formatValue(data.germinationRate_pct);
+
+  panel.querySelector('[data-field="timestamp"]').textContent =
+    formatTimestamp(data.timestamp);
+}
+
 /**
  * Actualiza solo los valores del panel (sin recrear HTML)
  */
 function updatePanelValues(panel, data, confidence, plantIndex) {
-  panel.querySelector('[data-field="seedVariety"]').textContent = 
-    data.seedVariety || `Planta ${plantIndex + 1}`;
-  panel.querySelector('[data-field="confidence"]').textContent = 
-    `${Math.round(confidence * 100)}%`;
-  
-  panel.querySelector('[data-field="eventType"]').textContent = 
-    data.eventType || '--';
-  
-  panel.querySelector('[data-field="eventId"]').textContent = 
-    data.eventId || '--';
-  
-  panel.querySelector('[data-field="batchId"]').textContent = 
-    data.batchId || '--';
-  
-  panel.querySelector('[data-field="lotCode"]').textContent = 
-    data.lotCode || '--';
-  
-  panel.querySelector('[data-field="fieldId"]').textContent = 
-    data.fieldId || '--';
-  
-  panel.querySelector('[data-field="recordedBy"]').textContent = 
-    data.recordedBy || '--';
-  
-  panel.querySelector('[data-field="seedLotId"]').textContent = 
-    data.seed_LotId || '--';
-  
-  panel.querySelector('[data-field="seedSupplier"]').textContent = 
-    data.seedSupplier || '--';
-  
-  panel.querySelector('[data-field="seedTreatment"]').textContent = 
-    data.seedTreatment || '--';
-  
-  panel.querySelector('[data-field="quantity"]').textContent = 
-    data.quantity_kg || '--';
-  
-  panel.querySelector('[data-field="plantingMethod"]').textContent = 
-    data.plantingMethod || '--';
-  
-  panel.querySelector('[data-field="rowSpacing"]').textContent = 
-    data.rowSpacing_cm || '--';
-  
-  panel.querySelector('[data-field="plantingDepth"]').textContent = 
-    data.plantingDepth_cm || '--';
-  
-  panel.querySelector('[data-field="germinationRate"]').textContent = 
-    data.germinationRate_pct || '--';
-  
-  panel.querySelector('[data-field="timestamp"]').textContent = 
-    formatTimestamp(data.timestamp);
+  const baseHistory = data.__eventHistory || {};
+  const history = { ...(panel._eventSnapshots || {}), ...baseHistory };
+  if (data.eventType) {
+    history[data.eventType] = data;
+  }
+  if (data.eventType) {
+    panel.dataset.activeEvent = data.eventType;
+  }
+  panel._eventSnapshots = history;
+  panel._confidence = confidence;
+  panel._plantIndex = plantIndex;
 
-  panel._currentData = data;
+  if (!panel.dataset.activeEvent || !history[panel.dataset.activeEvent]) {
+    panel.dataset.activeEvent = Object.keys(history)[0] || 'HARVEST_EVENT';
+  }
+
   updateEventDetails(panel);
 }
 
 function updateEventDetails(panel) {
   const container = panel.querySelector('[data-event-details]');
   if (!container) return;
-  const data = panel._currentData || {};
-  let active = panel.dataset.activeEvent || data.eventType || 'HARVEST_EVENT';
-  if (!EVENT_FIELD_MAP[active]) {
-    active = 'HARVEST_EVENT';
+  const snapshots = panel._eventSnapshots || {};
+  let active = panel.dataset.activeEvent || Object.keys(snapshots)[0];
+  if (!active || !snapshots[active]) {
+    active = Object.keys(snapshots)[0];
+  }
+  if (!active) {
+    container.innerHTML = '<div class="event-details-row">No hay eventos registrados.</div>';
+    return;
   }
   panel.dataset.activeEvent = active;
+
+  const selectedData = snapshots[active];
 
   const buttons = panel.querySelectorAll('[data-event-view]');
   buttons.forEach(btn => {
     btn.classList.toggle('active', btn.dataset.eventView === active);
   });
 
+  if (selectedData) {
+    renderGeneralFields(panel, selectedData, panel._confidence || 0, panel._plantIndex || 0);
+  }
+
   const fields = EVENT_FIELD_MAP[active] || [];
-  if (!fields.length) {
+  if (!selectedData || !fields.length) {
     container.innerHTML = '<div class="event-details-row">No hay datos para este evento.</div>';
     return;
   }
 
   const html = fields.map(field => {
-    const value = data[field.field];
+    const value = selectedData[field.field];
     return `
       <div class="event-details-row">
         <span class="event-details-label">${field.label}</span>
