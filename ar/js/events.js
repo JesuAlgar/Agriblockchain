@@ -3,6 +3,7 @@
 // ============================================
 
 import { CONFIG, STATE, setPlantIdInURL, setEventIdInURL } from './config.js';
+import { ensureWalletProvider } from './dataManager.js';
 import { log } from './utils.js';
 
 const HISTORY_STATE = STATE.history;
@@ -236,7 +237,8 @@ function getReadProvider() {
 }
 
 async function getWritableProvider() {
-  if (!window.ethereum) throw new Error('No hay wallet conectada');
+  const base = await ensureWalletProvider();
+  if (!base) throw new Error('No hay wallet conectada');
   const provider = new ethers.BrowserProvider(window.ethereum, 'any');
   await provider.send('eth_requestAccounts', []);
   const network = await provider.getNetwork();

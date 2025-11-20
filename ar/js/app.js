@@ -132,8 +132,7 @@ function updateZoomIndicator() {
 function openSaveModal() {
   // Relleno automático básico
   const set = (id, v) => { const el = document.getElementById(id); if (el) el.value = v; };
-  const urlEvent = getEventIdFromURL();
-  set('f_eventId', urlEvent || generateUlid());
+  set('f_eventId', generateUlid());
   set('f_batchId', generateUlid());
   set('f_timestamp', new Date().toISOString());
   set('f_lotCode', 'LOT-' + new Date().getFullYear());
@@ -225,11 +224,7 @@ function generateUlid() {
 }
 
 function handleNewPlant() {
-  const current = getPlantIdFromURL();
-  const rawId = prompt('Nuevo batchId (ULID)', current || '');
-  if (!rawId) return;
-  const newId = rawId.trim();
-  if (!newId) return;
+  const newId = generateUlid();
 
   const rawEvent = prompt('eventId (opcional)', getEventIdFromURL() || '');
   const eventId = rawEvent ? rawEvent.trim() : null;
@@ -243,7 +238,7 @@ function handleNewPlant() {
     STATE.history.pendingEventId = null;
   }
 
-  showAlert(`Planta "${newId}" seleccionada`, 'info');
+  showAlert(`Planta creada: ${newId}`, 'info');
   loadHistoryForPlant(newId, { force: true });
 }
 

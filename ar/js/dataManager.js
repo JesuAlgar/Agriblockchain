@@ -148,6 +148,12 @@ async function ensureMetaMaskSDKProvider() {
   return metaMaskSDKProvider;
 }
 
+export async function ensureWalletProvider() {
+  if (window.ethereum) return window.ethereum;
+  await ensureMetaMaskSDKProvider();
+  return window.ethereum;
+}
+
 async function getReadOnlyContract() {
   if (readOnlyContract) return readOnlyContract;
   try {
