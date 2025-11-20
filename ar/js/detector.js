@@ -4,7 +4,6 @@
 
 import { CONFIG, STATE } from './config.js';
 import { log } from './utils.js';
-import { loadPlantData } from './dataManager.js';
 import { 
   updateInstructions,
   createOrUpdatePanel,
@@ -246,11 +245,8 @@ export async function detect() {
       const label = plant.class;
       drawBoundingBox(plant.bbox, label);
 
-      // Cargar datos de la planta
-      const data = await loadPlantData(plantIndex);
-      
-      // Crear/actualizar panel de datos
-      createOrUpdatePanel(plantIndex, plant.bbox, plant.score, data);
+      // Crear/actualizar panel de datos (se rellenará con el evento activo)
+      createOrUpdatePanel(plantIndex, plant.bbox, plant.score, null);
       activePanels.add(plantIndex);
     }
 

@@ -5,7 +5,6 @@
 import { CONFIG, getPlantIdFromURL, STATE } from './config.js';
 import { log } from './utils.js';
 
-const plantDataCache = new Map();
 let metaMaskSDKInstance = null;
 let metaMaskSDKProvider = null;
 let readOnlyContract = null;
@@ -487,52 +486,3 @@ export async function savePlantData(plantId, data) {
 /**
  * CARGA DATOS
  */
-export async function loadPlantData(plantIndex) {
-  try {
-    const plantId = getPlantIdFromURL();
-    let data = null;
-    if (typeof localStorage !== 'undefined') {
-      try {
-        const local = localStorage.getItem('plant_' + plantId);
-        if (local) {
-          data = JSON.parse(local);
-        }
-      } catch {}
-    }
-    if (!data) {
-      data = await fetchBlockchainData(plantId);
-    }
-    if (!data) {
-      const url = './data/' + encodeURIComponent(plantId) + '.json';
-      const response = await fetch(url, { cache: 'no-store' });
-      if (!response.ok) return FALLBACK_DATA;
-      data = await response.json();
-    }
-    const history = loadEventHistoryMap(plantId);
-    if (data.eventType) {
-      history[data.eventType] = data;
-    }
-    data.__eventHistory = history;
-    saveEventHistoryMap(plantId, history);
-    plantDataCache.set(plantIndex, { data, lastUpdate: Date.now() });
-    return data;
-  } catch (error) {
-    return FALLBACK_DATA;
-  }
-}
-
-export function getCachedPlantData(plantIndex) {
-  return plantDataCache.get(plantIndex);
-}
-
-export function clearPlantCache(plantIndex) {
-  plantDataCache.delete(plantIndex);
-}
-
-export async function preloadPlantData(count = 3) {
-  const promises = [];
-  for (let i = 0; i < count; i++) {
-    promises.push(loadPlantData(i).catch(() => {}));
-  }
-  await Promise.all(promises);
-}

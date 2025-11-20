@@ -3,7 +3,6 @@
 // ============================================
 
 import { CONFIG, STATE, getPlantIdFromURL } from './config.js';
-import { getCachedPlantData } from './dataManager.js';
 
 const EVENT_LABELS = {
   SEEDING_EVENT: 'Seeding',

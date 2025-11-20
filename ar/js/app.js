@@ -5,7 +5,6 @@
 import { log } from './utils.js';
 import { startCamera, increaseZoom, decreaseZoom, resetZoom, getCurrentZoom } from './camera.js';
 import { loadModel, detect } from './detector.js';
-import { savePlantData, loadPlantData } from './dataManager.js';
 import { toggleTheme, toggleFullscreen, showAlert, initHistoryUI, renderHistoryTimeline, showTxHashBanner, showHistoryEventInPanel } from './ui.js';
 import { initHistoryModule, subscribeHistory, loadHistoryForPlant, setHistoryFilter, showMoreHistory, selectHistoryEvent, appendHistoricalEvent } from './events.js';
 import { STATE, getPlantIdFromURL, setPlantIdInURL, getEventIdFromURL, setEventIdInURL } from './config.js';
@@ -170,10 +169,16 @@ async function openJsonModal() {
   if (!editor) return;
 
   try {
-    editor.value = 'Cargando datos...';
-    const data = await loadPlantData(0);
-    const sanitized = sanitizeForEditor(data);
-    editor.value = JSON.stringify(sanitized, null, 2);
+    const selected = STATE.history?.selectedEvent?.data;
+    if (selected) {
+      editor.value = JSON.stringify(selected, null, 2);
+    } else {
+      editor.value = JSON.stringify({
+        eventId: getEventIdFromURL() || generateUlid(),
+        batchId: getPlantIdFromURL(),
+        timestamp: new Date().toISOString()
+      }, null, 2);
+    }
   } catch (err) {
     editor.value = JSON.stringify({ error: 'No se pudieron cargar los datos base', reason: err?.message || err }, null, 2);
   }
@@ -242,18 +247,6 @@ function handleNewPlant() {
   loadHistoryForPlant(newId, { force: true });
 }
 
-function sanitizeForEditor(data) {
-  const seen = new WeakSet();
-  return JSON.parse(JSON.stringify(data, (key, value) => {
-    if (key === '__eventHistory') return undefined;
-    if (typeof value === 'object' && value !== null) {
-      if (seen.has(value)) return;
-      seen.add(value);
-    }
-    return value;
-  }));
-}
-
 function buildEventPayload() {
   const eventType = document.getElementById('f_eventType')?.value || 'HARVEST_EVENT';
   const eventId = getInputValue('f_eventId');
@@ -266,7 +259,7 @@ function buildEventPayload() {
 
   const data = {
     eventType,
-    eventId: eventId || ('EVT-' + Date.now()),
+    eventId: eventId || generateUlid(),
     batchId,
     lotCode,
     timestamp
@@ -336,21 +329,14 @@ async function handleConfirmSave(e) {
     }
     data.batchId = plantId;
     setPlantIdInURL(plantId);
-    const mode = getSaveMode();
-    if (mode === 'history') {
-      if (data.eventId) {
-        STATE.history.pendingEventId = data.eventId;
-      }
-      showAlert('Añadiendo evento histórico...', 'warning');
-      const txHash = await appendHistoricalEvent(plantId, data.eventType, JSON.stringify(data));
-      showTxHashBanner(txHash);
-      showAlert(`Evento guardado (${txHash.slice(0, 8)}…)`, 'success');
-    } else {
-      showTxHashBanner(null);
-      showAlert('Enviando a blockchain...', 'warning');
-      await savePlantData(plantId, data);
-      showAlert('Datos guardados en blockchain', 'success');
+    if (data.eventId) {
+      STATE.history.pendingEventId = data.eventId;
+      setEventIdInURL(data.eventId);
     }
+    showAlert('Añadiendo evento histórico...', 'warning');
+    const txHash = await appendHistoricalEvent(plantId, data.eventType, JSON.stringify(data));
+    showTxHashBanner(txHash);
+    showAlert(`Evento guardado (${txHash.slice(0, 8)}…)`, 'success');
     toggleSaveModal(false);
   } catch (err) {
     log('Error guardando: ' + err.message, 'error');
@@ -388,21 +374,15 @@ async function handleJsonSave(e) {
     }
     parsed.batchId = plantId;
     setPlantIdInURL(plantId);
-    const mode = getSaveMode();
-    if (mode === 'history') {
-      if (parsed.eventId) {
-        STATE.history.pendingEventId = parsed.eventId;
-      }
-      showAlert('Añadiendo evento histórico...', 'warning');
-      const txHash = await appendHistoricalEvent(plantId, parsed.eventType || 'CUSTOM', JSON.stringify(parsed));
-      showTxHashBanner(txHash);
-      showAlert(`Evento guardado (${txHash.slice(0, 8)}…)`, 'success');
-    } else {
-      showTxHashBanner(null);
-      showAlert('Abriendo MetaMask para guardar JSON...', 'warning');
-      await savePlantData(plantId, parsed);
-      showAlert('JSON guardado en blockchain', 'success');
+    if (!parsed.eventId) {
+      parsed.eventId = generateUlid();
     }
+    STATE.history.pendingEventId = parsed.eventId;
+    setEventIdInURL(parsed.eventId);
+    showAlert('Añadiendo evento histórico...', 'warning');
+    const txHash = await appendHistoricalEvent(plantId, parsed.eventType || 'CUSTOM', JSON.stringify(parsed));
+    showTxHashBanner(txHash);
+    showAlert(`Evento guardado (${txHash.slice(0, 8)}…)`, 'success');
     toggleJsonModal(false);
   } catch (err) {
     log('Error guardando JSON: ' + err.message, 'error');
@@ -413,11 +393,6 @@ async function handleJsonSave(e) {
       btn.textContent = 'Guardar JSON';
     }
   }
-}
-
-function getSaveMode() {
-  const radio = document.querySelector('input[name="saveMode"]:checked');
-  return radio ? radio.value : 'state';
 }
 
 // --------------------------------------------
