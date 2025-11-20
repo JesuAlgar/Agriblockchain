@@ -328,7 +328,7 @@ async function handleConfirmSave(e) {
       STATE.history.pendingEventId = data.eventId;
       setEventIdInURL(data.eventId);
     }
-    showAlert('Añadiendo evento histórico...', 'warning');
+    showAlert('Añadiendo evento histórico... Firma en MetaMask y vuelve a esta pestaña para completar.', 'warning');
     const txHash = await appendHistoricalEvent(plantId, data.eventType, JSON.stringify(data));
     showTxHashBanner(txHash);
     showAlert(`Evento guardado (${txHash.slice(0, 8)}…)`, 'success');
@@ -374,7 +374,7 @@ async function handleJsonSave(e) {
     }
     STATE.history.pendingEventId = parsed.eventId;
     setEventIdInURL(parsed.eventId);
-    showAlert('Añadiendo evento histórico...', 'warning');
+    showAlert('Añadiendo evento histórico... Firma en MetaMask y vuelve a esta pestaña para completar.', 'warning');
     const txHash = await appendHistoricalEvent(plantId, parsed.eventType || 'CUSTOM', JSON.stringify(parsed));
     showTxHashBanner(txHash);
     showAlert(`Evento guardado (${txHash.slice(0, 8)}…)`, 'success');
