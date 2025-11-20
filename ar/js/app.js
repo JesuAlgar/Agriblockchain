@@ -226,7 +226,7 @@ function generateUlid() {
 
 function handleNewPlant() {
   const current = getPlantIdFromURL();
-  const rawId = prompt('ID de la nueva planta', current || 'planta01');
+  const rawId = prompt('Nuevo batchId (ULID)', current || '');
   if (!rawId) return;
   const newId = rawId.trim();
   if (!newId) return;

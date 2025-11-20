@@ -156,7 +156,7 @@ export const CONFIG = {
 // Obtener ID de planta desde URL
 export function getPlantIdFromURL() {
   const params = new URLSearchParams(location.search);
-  return params.get('id') || 'planta01';
+  return params.get('batch') || params.get('id') || 'planta01';
 }
 
 export function setPlantIdInURL(newId) {
@@ -165,7 +165,8 @@ export function setPlantIdInURL(newId) {
     const cleanId = newId.trim();
     if (!cleanId) return;
     const url = new URL(window.location.href);
-    url.searchParams.set('id', cleanId);
+    url.searchParams.set('batch', cleanId);
+    url.searchParams.delete('id');
     history.replaceState({}, '', url);
   } catch {}
 }

@@ -48,24 +48,22 @@ Puedes servir `ar/` con cualquier servidor estático. Ejemplo rápido:
 cd ar
 npx serve . -l 4173
 ```
-Abre `http://localhost:4173/index.html?id=planta01`. Para publicar en Netlify
+Abre `http://localhost:4173/index.html?batch=01HYQTA2M1H9PD2F0W1P1X3PPH`. Para publicar en Netlify
 sube la carpeta `ar` o enlaza el repositorio.
 
 ## Parámetros útiles
 
-- `?id=planta01` → selecciona la planta/plantaId inicial.
+- `?batch=<batchId>` → selecciona el lote/planta inicial (se mantiene compatibilidad con enlaces antiguos `?id=`).
 - `?debug=1` → muestra panel de métricas (bloques consultados, eventos, etc.).
 
 ## Flujo de uso
 
-1. Detecta la planta (o escanea el QR que apunta a `index.html?id=...`).
-2. Pulsa “BC” para abrir el modal. Puedes elegir:
-   - **Actualizar estado** (`setPlantData`) – mantiene compatibilidad con el
-     flujo antiguo (último JSON por planta).
-   - **Guardar histórico** (`addPlantEvent`) – añade un evento append-only en
-     la cadena (Seeding, Harvest, Transport, Storage, Sales, ...).
+1. Detecta la planta (o escanea el QR que apunta a `index.html?batch=...`).
+2. Pulsa “BC” para abrir el modal y **guardar histórico (`addPlantEvent`)**: cada
+   etapa (Seeding, Harvest, Transport, Storage, Sales, …) se añade como evento
+   append-only.
 3. La app consulta los eventos on-chain mediante `queryFilter`, cachea en
-   `localStorage` (`agri:history:<plantId>`) y permite filtrarlos.
+   `localStorage` (`agri:history:<batchId>`) y permite filtrarlos.
 4. Usa el botón de copiar hash o visita el explorador
    [https://sepolia.etherscan.io](https://sepolia.etherscan.io) para auditar las
    transacciones.
