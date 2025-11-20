@@ -107,6 +107,7 @@ export const CONFIG = {
   // Contrato de histórico (eventos append-only)
   events: {
     contractAddress: '0x448cA21baca3954a1bF428bfe1f0C9bBbdC51673',
+    deploymentBlock: 9668400,
     abi: [
       {
         "anonymous": false,

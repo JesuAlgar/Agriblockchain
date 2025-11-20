@@ -8,7 +8,7 @@ import { log } from './utils.js';
 
 const HISTORY_STATE = STATE.history;
 const CACHE_PREFIX = 'agri:history';
-const RANGE_BLOCKS = 50000;
+const RANGE_BLOCKS = 10000;
 const DEFAULT_VISIBLE = 50;
 const subscribers = new Set();
 
@@ -194,7 +194,9 @@ async function fetchEventsFromChain(contractAddress, plantId, fromBlock) {
   const provider = await getReadProvider();
   const contract = new ethers.Contract(contractAddress, CONFIG.events.abi, provider);
   const latest = await provider.getBlockNumber();
-  const start = Math.max(0, fromBlock || 0);
+  const deploymentBlock = Number(CONFIG.events.deploymentBlock || 0);
+  const normalizedFrom = typeof fromBlock === 'number' && fromBlock >= 0 ? fromBlock : 0;
+  const start = Math.max(0, deploymentBlock || 0, normalizedFrom);
   const logs = [];
   const metrics = { requests: [], fromBlock: start, toBlock: latest, startedAt: Date.now() };
 
