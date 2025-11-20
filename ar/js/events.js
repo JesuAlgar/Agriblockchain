@@ -12,6 +12,17 @@ const RANGE_BLOCKS = 50000;
 const DEFAULT_VISIBLE = 50;
 const subscribers = new Set();
 
+function resolveEventsContractAddress() {
+  const raw = (CONFIG.events.contractAddress || '').trim();
+  if (!raw || raw.startsWith('REPLACE')) {
+    throw new Error('Configura CONFIG.events.contractAddress con la dirección desplegada de AgriEvents.');
+  }
+  if (!/^0x[a-fA-F0-9]{40}$/.test(raw)) {
+    throw new Error(`Dirección del contrato de eventos inválida: ${raw}`);
+  }
+  return raw;
+}
+
 function notifyHistory() {
   subscribers.forEach(cb => {
     try { cb({ ...HISTORY_STATE }); } catch (err) { console.error('History subscriber error', err); }
@@ -52,8 +63,11 @@ export function showMoreHistory(step = 50) {
 
 export async function loadHistoryForPlant(plantId, { force = false } = {}) {
   if (!plantId) return;
-  if (!CONFIG.events.contractAddress || CONFIG.events.contractAddress.startsWith('REPLACE')) {
-    HISTORY_STATE.error = 'Configura CONTRACT_EVENTS_ADDRESS en config.js';
+  let eventContractAddress;
+  try {
+    eventContractAddress = resolveEventsContractAddress();
+  } catch (cfgErr) {
+    HISTORY_STATE.error = cfgErr.message;
     notifyHistory();
     return;
   }
@@ -64,13 +78,13 @@ export async function loadHistoryForPlant(plantId, { force = false } = {}) {
   HISTORY_STATE.status = `Consultando ${plantId}...`;
   notifyHistory();
 
-  const cacheKey = makeCacheKey(plantId);
+  const cacheKey = makeCacheKey(eventContractAddress, plantId);
   let cached = !force ? readCache(cacheKey) : null;
   let events = cached?.events || [];
   let lastBlock = cached?.lastBlock || 0;
 
   try {
-    const { newEvents, latestBlock, metrics } = await fetchEventsFromChain(plantId, lastBlock ? lastBlock + 1 : 0);
+    const { newEvents, latestBlock, metrics } = await fetchEventsFromChain(eventContractAddress, plantId, lastBlock ? lastBlock + 1 : 0);
     HISTORY_STATE.metrics = metrics;
     if (force || !cached) {
       events = newEvents;
@@ -132,8 +146,10 @@ export function selectHistoryEvent(key) {
 }
 
 export async function appendHistoricalEvent(plantId, eventType, jsonPayload) {
+  const contractAddress = resolveEventsContractAddress();
   const provider = await getWritableProvider();
-  const contract = new ethers.Contract(CONFIG.events.contractAddress, CONFIG.events.abi, provider);
+  const signer = await provider.getSigner();
+  const contract = new ethers.Contract(contractAddress, CONFIG.events.abi, signer);
   const normalizedType = eventType || 'HARVEST_EVENT';
   log('[History] addPlantEvent tipo=' + normalizedType);
   const tx = await contract.addPlantEvent(plantId, normalizedType, jsonPayload);
@@ -174,9 +190,9 @@ function mergeEvents(existing, incoming) {
   return Array.from(map.values());
 }
 
-async function fetchEventsFromChain(plantId, fromBlock) {
+async function fetchEventsFromChain(contractAddress, plantId, fromBlock) {
   const provider = await getReadProvider();
-  const contract = new ethers.Contract(CONFIG.events.contractAddress, CONFIG.events.abi, provider);
+  const contract = new ethers.Contract(contractAddress, CONFIG.events.abi, provider);
   const latest = await provider.getBlockNumber();
   const start = Math.max(0, fromBlock || 0);
   const logs = [];
@@ -248,8 +264,8 @@ async function getWritableProvider() {
   return provider;
 }
 
-function makeCacheKey(plantId) {
-  const addr = (CONFIG.events.contractAddress || '').toLowerCase();
+function makeCacheKey(contractAddress, plantId) {
+  const addr = (contractAddress || '').toLowerCase();
   return `${CACHE_PREFIX}:${addr}:${plantId}`;
 }
 
