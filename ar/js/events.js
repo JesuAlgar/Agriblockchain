@@ -202,7 +202,7 @@ async function fetchEventsFromChain(contractAddress, plantId, fromBlock) {
 
   for (let block = start; block <= latest; block += RANGE_BLOCKS) {
     const to = Math.min(block + RANGE_BLOCKS - 1, latest);
-    const filter = contract.filters.PlantEvent(plantId);
+    const filter = contract.filters.PlantEvent();
     const chunk = await contract.queryFilter(filter, block, to);
     logs.push(...chunk);
     metrics.requests.push({ from: block, to, events: chunk.length });
@@ -210,22 +210,40 @@ async function fetchEventsFromChain(contractAddress, plantId, fromBlock) {
   metrics.durationMs = Date.now() - metrics.startedAt;
 
   const mapped = logs.map(mapLog).filter(Boolean);
-  return { newEvents: mapped, latestBlock: latest, metrics };
+  const normalizedPlant = (plantId || '').trim().toLowerCase();
+  const filtered = normalizedPlant
+    ? mapped.filter(evt => {
+        const eventPlant = (evt.plantId || evt.data?.batchId || '').trim().toLowerCase();
+        return eventPlant === normalizedPlant;
+      })
+    : mapped;
+  return { newEvents: filtered, latestBlock: latest, metrics };
 }
 
 function mapLog(logEntry) {
   const args = logEntry.args || {};
   try {
-    const plantId = args.plantId || '';
-    const eventType = (args.eventType || '').toString();
-    const normalized = eventType.toUpperCase();
-    const shortType = normalized.replace('_EVENT', '') || 'UNKNOWN';
+    let plantId = '';
+    if (typeof args.plantId === 'string' && !args.plantId.startsWith('0x')) {
+      plantId = args.plantId;
+    }
     const rawPayload = args.jsonPayload || '{}';
     let parsed = null;
     try { parsed = JSON.parse(rawPayload); } catch { parsed = null; }
     const derivedEventId = (parsed && parsed.eventId) || args.eventId || logEntry.transactionHash;
     if (parsed) parsed.eventId = derivedEventId;
     else parsed = { eventId: derivedEventId };
+    if (!plantId && parsed?.batchId) {
+      plantId = parsed.batchId;
+    }
+    let eventType = '';
+    if (typeof args.eventType === 'string' && !args.eventType.startsWith('0x')) {
+      eventType = args.eventType;
+    } else if (parsed?.eventType) {
+      eventType = parsed.eventType;
+    }
+    const normalized = (eventType || '').toUpperCase();
+    const shortType = normalized.replace('_EVENT', '') || 'UNKNOWN';
     return {
       key: `${logEntry.transactionHash}-${Number(args.idx ?? logEntry.index ?? 0)}`,
       plantId,
