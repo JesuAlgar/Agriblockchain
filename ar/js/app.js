@@ -8,7 +8,7 @@ import { loadModel, detect } from './detector.js';
 import { savePlantData, loadPlantData } from './dataManager.js';
 import { toggleTheme, toggleFullscreen, showAlert, initHistoryUI, renderHistoryTimeline, showTxHashBanner, showHistoryEventInPanel } from './ui.js';
 import { initHistoryModule, subscribeHistory, loadHistoryForPlant, setHistoryFilter, showMoreHistory, selectHistoryEvent, appendHistoricalEvent } from './events.js';
-import { STATE, getPlantIdFromURL, setPlantIdInURL, getEventIdFromURL } from './config.js';
+import { STATE, getPlantIdFromURL, setPlantIdInURL, getEventIdFromURL, setEventIdInURL } from './config.js';
 
 // --------------------------------------------
 // Arranque principal
@@ -88,6 +88,8 @@ function wireUI() {
 
   const btnEditJson = byId('btnEditJson');
   if (btnEditJson) btnEditJson.addEventListener('click', openJsonModal);
+  const btnNewPlant = byId('btnNewPlant');
+  if (btnNewPlant) btnNewPlant.addEventListener('click', handleNewPlant);
 
   const btnConfirmSave = byId('btnConfirmSave');
   const btnCancelSave = byId('btnCancelSave');
@@ -215,6 +217,29 @@ function generateUlid() {
     randChars[i] = ENCODING[randomValues[i] % 32];
   }
   return timeChars.join('') + randChars.join('');
+}
+
+function handleNewPlant() {
+  const current = getPlantIdFromURL();
+  const rawId = prompt('ID de la nueva planta', current || 'planta01');
+  if (!rawId) return;
+  const newId = rawId.trim();
+  if (!newId) return;
+
+  const rawEvent = prompt('eventId (opcional)', getEventIdFromURL() || '');
+  const eventId = rawEvent ? rawEvent.trim() : null;
+
+  setPlantIdInURL(newId);
+  if (eventId) {
+    setEventIdInURL(eventId);
+    STATE.history.pendingEventId = eventId;
+  } else {
+    setEventIdInURL(null);
+    STATE.history.pendingEventId = null;
+  }
+
+  showAlert(`Planta "${newId}" seleccionada`, 'info');
+  loadHistoryForPlant(newId, { force: true });
 }
 
 function sanitizeForEditor(data) {
