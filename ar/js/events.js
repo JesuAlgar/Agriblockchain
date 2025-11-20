@@ -246,12 +246,19 @@ function mapLog(logEntry) {
 }
 
 function getReadProvider() {
+  try {
+    return new ethers.JsonRpcProvider(CONFIG.blockchain.network.rpcUrl);
+  } catch (err) {
+    log('[History] Error creando JsonRpcProvider: ' + (err?.message || err), 'warn');
+  }
   if (window.ethereum) {
     try {
       return new ethers.BrowserProvider(window.ethereum);
-    } catch {}
+    } catch (innerErr) {
+      log('[History] Error usando window.ethereum como provider: ' + (innerErr?.message || innerErr), 'warn');
+    }
   }
-  return new ethers.JsonRpcProvider(CONFIG.blockchain.network.rpcUrl);
+  throw new Error('No hay provider RPC disponible para leer eventos.');
 }
 
 async function getWritableProvider() {
