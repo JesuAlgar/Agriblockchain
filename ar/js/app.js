@@ -6,7 +6,7 @@ import { log } from './utils.js';
 import { startCamera, increaseZoom, decreaseZoom, resetZoom, getCurrentZoom } from './camera.js';
 import { loadModel, detect } from './detector.js';
 import { toggleTheme, toggleFullscreen, showAlert, initHistoryUI, renderHistoryTimeline, showTxHashBanner, showHistoryEventInPanel } from './ui.js';
-import { initHistoryModule, subscribeHistory, loadHistoryForPlant, setHistoryFilter, showMoreHistory, selectHistoryEvent, appendHistoricalEvent } from './events.js';
+import { initHistoryModule, subscribeHistory, loadHistoryForPlant, setHistoryFilter, showMoreHistory, selectHistoryEvent, appendHistoricalEvent, changePlantId } from './events.js';
 import { STATE, getPlantIdFromURL, setPlantIdInURL, getEventIdFromURL, setEventIdInURL } from './config.js';
 
 // --------------------------------------------
@@ -107,7 +107,8 @@ function wireUI() {
     onFilterChange: (filter) => setHistoryFilter(filter || 'ALL'),
     onRefresh: () => loadHistoryForPlant(STATE.history.plantId || getPlantIdFromURL(), { force: true }),
     onLoadMore: () => showMoreHistory(),
-    onSelectEvent: (key) => selectHistoryEvent(key)
+    onSelectEvent: (key) => selectHistoryEvent(key),
+    onChangePlantId: (newId) => changePlantId(newId)
   });
 
   const btnToggleHistory = byId('btnToggleHistory');

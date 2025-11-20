@@ -34,6 +34,17 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  border: 0;
+}
+
 /* ============================================
    CONTENEDOR PRINCIPAL
    ============================================ */
@@ -493,6 +504,15 @@ body.is-fullscreen .header {
   display: flex;
   gap: 6px;
   align-items: center;
+}
+
+.plant-input-wrapper input {
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 6px;
+  color: var(--text);
+  padding: 4px 8px;
+  min-width: 180px;
 }
 
 .plant-label {

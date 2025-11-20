@@ -624,6 +624,28 @@ export function initHistoryUI(handlers = {}) {
   if (plantLabel) {
     plantLabel.textContent = getPlantIdFromURL();
   }
+
+  const plantInput = document.getElementById('plantSelector');
+  if (plantInput) {
+    plantInput.value = getPlantIdFromURL();
+    plantInput.addEventListener('keydown', (ev) => {
+      if (ev.key === 'Enter') {
+        ev.preventDefault();
+        const value = plantInput.value.trim();
+        if (value) handlers.onChangePlantId?.(value);
+      }
+    });
+  }
+
+  const plantBtn = document.getElementById('btnPlantSelector');
+  if (plantBtn) {
+    plantBtn.addEventListener('click', (ev) => {
+      ev.preventDefault();
+      if (!plantInput) return;
+      const value = plantInput.value.trim();
+      if (value) handlers.onChangePlantId?.(value);
+    });
+  }
 }
 
 export function renderHistoryTimeline(state = {}) {
@@ -638,6 +660,9 @@ export function renderHistoryTimeline(state = {}) {
   const plantLabel = document.getElementById('plantLabel');
   if (plantLabel && state.plantId) {
     plantLabel.textContent = state.plantId;
+  }
+  if (plantInput && state.plantId) {
+    plantInput.value = state.plantId;
   }
 
   const list = document.getElementById('historyList');
