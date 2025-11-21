@@ -85,6 +85,7 @@ export async function loadHistoryForPlant(plantId, { force = false } = {}) {
 
   try {
     const { newEvents, latestBlock, metrics } = await fetchEventsFromChain(eventContractAddress, plantId, lastBlock ? lastBlock + 1 : 0);
+    log(`[History] fetchEventsFromChain(${plantId}) -> ${newEvents.length} eventos visibles (último bloque ${latestBlock})`);
     HISTORY_STATE.metrics = metrics;
     if (force || !cached) {
       events = newEvents;
@@ -217,6 +218,7 @@ async function fetchEventsFromChain(contractAddress, plantId, fromBlock) {
         return eventPlant === normalizedPlant;
       })
     : mapped;
+  log(`[History] queryFilter bloques ${start}-${latest}: logs=${logs.length}, mapeados=${mapped.length}, filtrados=${filtered.length} para ${plantId}`);
   return { newEvents: filtered, latestBlock: latest, metrics };
 }
 
