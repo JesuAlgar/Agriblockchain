@@ -1,5 +1,5 @@
-﻿// ============================================
-// CONFIGURACIÃ“N GLOBAL MEJORADA
+// ============================================
+// CONFIGURACIÓN GLOBAL MEJORADA
 // ============================================
 
 export const CONFIG = {
@@ -15,32 +15,32 @@ export const CONFIG = {
     battery_pct: { min: 20, max: 100 }
   },
   
-  // â­ MEJORADO: ConfiguraciÃ³n de cÃ¡mara CON ZOOM
+  // ⭐ MEJORADO: Configuración de cámara CON ZOOM
   camera: {
     facingMode: 'environment',
     idealWidth: 1280,
     idealHeight: 720,
-    zoomLevel: 1, // â­ NUEVO: Nivel de zoom inicial
-    zoomStep: 0.2, // â­ NUEVO: Paso de zoom (20%)
+    zoomLevel: 1, // ⭐ NUEVO: Nivel de zoom inicial
+    zoomStep: 0.2, // ⭐ NUEVO: Paso de zoom (20%)
     minZoom: 1,
     maxZoom: 4
   },
   
-  // ConfiguraciÃ³n del modelo de IA
+  // Configuración del modelo de IA
   model: {
     base: 'mobilenet_v2',
     forceWasmOnMobile: false,
     
-    // â­ EXPANDIDO: Ahora detecta PLANTAS, ÃRBOLES y ARBUSTOS
+    // ⭐ EXPANDIDO: Ahora detecta PLANTAS, ÁRBOLES y ARBUSTOS
     // Clases que detecta COCO-SSD
     plantClasses: [
-      // Plantas pequeÃ±as/macetas
+      // Plantas pequeñas/macetas
       'potted plant',
       'vase',
       'plant',
       
-      // â­ NUEVAS: Plantas y Ã¡rboles mÃ¡s grandes
-      'tree',          // Ãrboles
+      // ⭐ NUEVAS: Plantas y árboles más grandes
+      'tree',          // Árboles
       'bush',          // Arbustos
       'shrub',         // Arbustos (alias)
       'cactus',        // Cactus
@@ -52,12 +52,12 @@ export const CONFIG = {
       'climbing plant' // Plantas trepadoras
     ],
     
-    // â­ NUEVO: Umbral mÃ­nimo de confianza (0-1)
-    // MÃ¡s bajo = mÃ¡s detecciones, mÃ¡s alto = solo las muy seguras
-    confidenceThreshold: 0.4 // 40% de confianza mÃ­nima
+    // ⭐ NUEVO: Umbral mínimo de confianza (0-1)
+    // Más bajo = más detecciones, más alto = solo las muy seguras
+    confidenceThreshold: 0.4 // 40% de confianza mínima
   },
   
-  // ConfiguraciÃ³n de UI
+  // Configuración de UI
   ui: {
     panelOffset: 20,
     panelWidth: 220,
@@ -65,7 +65,7 @@ export const CONFIG = {
     alertCooldown: 30000
   },
   
-  // Configuración blockchain (estado actual)
+  // Configuraci�n blockchain (estado actual)
   blockchain: {
     mode: 'BLOCKCHAIN',
     network: {
@@ -104,7 +104,7 @@ export const CONFIG = {
     ]
   },
   
-  // Contrato de histórico (eventos append-only)
+  // Contrato de hist�rico (eventos append-only)
   events: {
     contractAddress: '0x448cA21baca3954a1bF428bfe1f0C9bBbdC51673',
     deploymentBlock: 9668400,
@@ -144,7 +144,7 @@ export const CONFIG = {
   },
   // WalletConnect
   walletConnect: {
-    projectId: '52a58f37420c2c8eed772823a7e37667', // Pega aquÃ­ tu Project ID de cloud.walletconnect.com
+    projectId: '52a58f37420c2c8eed772823a7e37667', // Pega aquí tu Project ID de cloud.walletconnect.com
     metadata: {
       name: 'AgriBlockchain',
       description: 'AR + IA + Blockchain',
@@ -187,7 +187,7 @@ export function setEventIdInURL(eventId) {
   } catch {}
 }
 
-// â­ MEJORADO: Estado global compartido
+// ⭐ MEJORADO: Estado global compartido
 export const STATE = {
   currentTheme: 'dark',
   model: null,
@@ -195,14 +195,15 @@ export const STATE = {
   canvas: null,
   ctx: null,
   container: null,
-  stream: null, // â­ NUEVO: Stream de video
+  stream: null, // ⭐ NUEVO: Stream de video
   lastDetectionTime: 0,
   detectionCount: 0,
   detectedOnce: false,
+  showPanel: false,
   alertShown: new Set(),
   panelRegion: null,
   
-  // â­ NUEVO: Capacidades de zoom
+  // ⭐ NUEVO: Capacidades de zoom
   cameraZoomCapabilities: {
     supported: false,
     currentZoom: 1

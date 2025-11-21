@@ -21,7 +21,7 @@ async function init() {
     STATE.history.pendingEventId = getEventIdFromURL() || null;
     subscribeHistory((state) => {
       renderHistoryTimeline(state);
-      if (STATE.detectedOnce && state.selectedEvent) {
+      if (STATE.detectedOnce && STATE.showPanel && state.selectedEvent) {
         showHistoryEventInPanel(state.selectedEvent);
       }
     });
@@ -108,7 +108,10 @@ function wireUI() {
       loadHistoryForPlant(STATE.history.plantId || getPlantIdFromURL(), { force: true });
     },
     onLoadMore: () => showMoreHistory(),
-    onSelectEvent: (key) => selectHistoryEvent(key),
+    onSelectEvent: (key) => {
+      STATE.showPanel = true;
+      selectHistoryEvent(key);
+    },
     onChangePlantId: (newId) => {
       STATE.history.loadedOnce = true;
       changePlantId(newId);
