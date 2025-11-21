@@ -11,6 +11,7 @@ const CACHE_PREFIX = 'agri:history';
 const RANGE_BLOCKS = 10000;
 const DEFAULT_VISIBLE = 50;
 const subscribers = new Set();
+const EVENT_IFACE = new ethers.Interface(CONFIG.events.abi);
 
 function resolveEventsContractAddress() {
   const raw = (CONFIG.events.contractAddress || '').trim();
@@ -219,7 +220,54 @@ async function fetchEventsFromChain(contractAddress, plantId, fromBlock) {
       })
     : mapped;
   log(`[History] queryFilter bloques ${start}-${latest}: logs=${logs.length}, mapeados=${mapped.length}, filtrados=${filtered.length} para ${plantId}`);
+  if (!filtered.length) {
+    const apiEvents = await fetchEventsFromApi(contractAddress, plantId, start, latest);
+    if (apiEvents.length) {
+      log(`[History] fallback API devolvió ${apiEvents.length} eventos para ${plantId}`);
+      return { newEvents: apiEvents, latestBlock: latest, metrics };
+    }
+  }
   return { newEvents: filtered, latestBlock: latest, metrics };
+}
+
+async function fetchEventsFromApi(contractAddress, plantId, fromBlock, toBlock) {
+  const url = `https://eth-sepolia.blockscout.com/api?module=logs&action=getLogs&address=${contractAddress}&fromBlock=${fromBlock}&toBlock=${toBlock}`;
+  try {
+    const res = await fetch(url);
+    const json = await res.json();
+    if (!json?.result || !Array.isArray(json.result)) return [];
+    const normalizedPlant = (plantId || '').trim().toLowerCase();
+    const events = [];
+    for (const logEntry of json.result) {
+      try {
+        const decoded = EVENT_IFACE.decodeEventLog('PlantEvent', logEntry.data, logEntry.topics);
+        const mapped = mapLog({
+          args: {
+            plantId: decoded.plantId,
+            eventType: decoded.eventType,
+            jsonPayload: decoded.jsonPayload,
+            recordedBy: decoded.recordedBy,
+            timestamp: decoded.timestamp,
+            idx: decoded.idx
+          },
+          blockNumber: Number(logEntry.blockNumber),
+          transactionHash: logEntry.transactionHash,
+          address: logEntry.address,
+          index: Number(logEntry.logIndex || 0)
+        });
+        if (!mapped) continue;
+        const eventPlant = (mapped.plantId || mapped.data?.batchId || '').trim().toLowerCase();
+        if (normalizedPlant && eventPlant !== normalizedPlant) continue;
+        events.push(mapped);
+      } catch (err) {
+        log('[History] Error parseando log API: ' + (err?.message || err), 'warn');
+      }
+    }
+    return events;
+  } catch (err) {
+    log('[History] Error en fallback API: ' + (err?.message || err), 'warn');
+    return [];
+  }
 }
 
 function mapLog(logEntry) {
