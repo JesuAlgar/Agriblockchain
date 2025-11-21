@@ -21,7 +21,7 @@ async function init() {
     STATE.history.pendingEventId = getEventIdFromURL() || null;
     subscribeHistory((state) => {
       renderHistoryTimeline(state);
-      if (STATE.detectionCount > 0 && state.selectedEvent) {
+      if (STATE.detectedOnce && state.selectedEvent) {
         showHistoryEventInPanel(state.selectedEvent);
       }
     });
@@ -412,8 +412,7 @@ function scheduleHistoryLoadOnDetection(plantId) {
   if (!plantId) return;
   const wait = () => {
     if (STATE.history.loadedOnce) return;
-    if (STATE.detectionCount > 0) {
-      STATE.detectedOnce = true;
+    if (STATE.detectedOnce) {
       STATE.history.loadedOnce = true;
       loadHistoryForPlant(plantId, { force: true });
       return;
