@@ -11,7 +11,7 @@ const CACHE_PREFIX = 'agri:history';
 const RANGE_BLOCKS = 10000;
 const DEFAULT_VISIBLE = 50;
 const subscribers = new Set();
-const EVENT_IFACE = new ethers.Interface(CONFIG.events.abi);
+const ABI_CODER = ethers.AbiCoder.defaultAbiCoder();
 
 function resolveEventsContractAddress() {
   const raw = (CONFIG.events.contractAddress || '').trim();
@@ -240,23 +240,32 @@ async function fetchEventsFromApi(contractAddress, plantId, fromBlock, toBlock) 
     const events = [];
     for (const logEntry of json.result) {
       try {
-        const decoded = EVENT_IFACE.decodeEventLog('PlantEvent', logEntry.data, logEntry.topics);
-        const mapped = mapLog({
-          args: {
-            plantId: decoded.plantId,
-            eventType: decoded.eventType,
-            jsonPayload: decoded.jsonPayload,
-            recordedBy: decoded.recordedBy,
-            timestamp: decoded.timestamp,
-            idx: decoded.idx
-          },
+        const [jsonPayload, timestamp, idx] = ABI_CODER.decode(
+          ['string', 'uint256', 'uint256'],
+          logEntry.data
+        );
+        let parsed = null;
+        try { parsed = JSON.parse(jsonPayload); } catch { parsed = null; }
+        const plantIdFromJson = (parsed?.batchId || '').trim();
+        const eventTypeFromJson = (parsed?.eventType || '').trim();
+        const recordedBy = (Array.isArray(logEntry.topics) && logEntry.topics[3])
+          ? '0x' + logEntry.topics[3].slice(-40)
+          : logEntry.address;
+        const mapped = {
+          key: `${logEntry.transactionHash}-${Number(logEntry.logIndex || 0)}`,
+          plantId: plantIdFromJson,
+          eventType: (eventTypeFromJson || '').toUpperCase(),
+          shortType: (eventTypeFromJson || '').toUpperCase().replace('_EVENT', '') || 'UNKNOWN',
+          recordedBy,
+          timestamp: Number(timestamp || 0),
+          idx: Number(idx || 0),
           blockNumber: Number(logEntry.blockNumber),
-          transactionHash: logEntry.transactionHash,
-          address: logEntry.address,
-          index: Number(logEntry.logIndex || 0)
-        });
-        if (!mapped) continue;
-        const eventPlant = (mapped.plantId || mapped.data?.batchId || '').trim().toLowerCase();
+          txHash: logEntry.transactionHash,
+          rawPayload: jsonPayload,
+          data: parsed || { eventId: logEntry.transactionHash }
+        };
+        if (parsed && !parsed.eventId) parsed.eventId = logEntry.transactionHash;
+        const eventPlant = (mapped.plantId || mapped.data?.batchId || '').toLowerCase();
         if (normalizedPlant && eventPlant !== normalizedPlant) continue;
         events.push(mapped);
       } catch (err) {
