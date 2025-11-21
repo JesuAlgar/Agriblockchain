@@ -221,6 +221,7 @@ export const STATE = {
     loading: false,
     debug: false,
     metrics: null,
-    pendingEventId: null
+    pendingEventId: null,
+    loadedOnce: false
   }
 };

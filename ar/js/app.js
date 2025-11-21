@@ -39,9 +39,6 @@ async function init() {
     // Enlazar UI
     wireUI();
 
-    const plantId = getPlantIdFromURL();
-    loadHistoryForPlant(plantId, { force: true });
-
     // Cámara
     log('Cámara: solicitando permisos...');
     await startCamera(video, canvas);
@@ -52,6 +49,7 @@ async function init() {
     await loadModel();
     log('IA lista, iniciando detección...');
     detect();
+    scheduleHistoryLoadOnDetection(getPlantIdFromURL());
 
   } catch (err) {
     log(`Error de arranque: ${err.message}`, 'error');
@@ -105,10 +103,16 @@ function wireUI() {
 
   initHistoryUI({
     onFilterChange: (filter) => setHistoryFilter(filter || 'ALL'),
-    onRefresh: () => loadHistoryForPlant(STATE.history.plantId || getPlantIdFromURL(), { force: true }),
+    onRefresh: () => {
+      STATE.history.loadedOnce = true;
+      loadHistoryForPlant(STATE.history.plantId || getPlantIdFromURL(), { force: true });
+    },
     onLoadMore: () => showMoreHistory(),
     onSelectEvent: (key) => selectHistoryEvent(key),
-    onChangePlantId: (newId) => changePlantId(newId)
+    onChangePlantId: (newId) => {
+      STATE.history.loadedOnce = true;
+      changePlantId(newId);
+    }
   });
 
   const btnToggleHistory = byId('btnToggleHistory');
@@ -243,6 +247,7 @@ function handleNewPlant() {
   }
 
   showAlert(`Planta creada: ${newId}`, 'info');
+  STATE.history.loadedOnce = true;
   loadHistoryForPlant(newId, { force: true });
 }
 
@@ -401,4 +406,18 @@ if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', init);
 } else {
   init();
+}
+
+function scheduleHistoryLoadOnDetection(plantId) {
+  if (!plantId) return;
+  const wait = () => {
+    if (STATE.history.loadedOnce) return;
+    if (STATE.detectionCount > 0) {
+      STATE.history.loadedOnce = true;
+      loadHistoryForPlant(plantId, { force: true });
+      return;
+    }
+    requestAnimationFrame(wait);
+  };
+  wait();
 }
