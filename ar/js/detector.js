@@ -6,7 +6,6 @@ import { CONFIG, STATE } from './config.js';
 import { log } from './utils.js';
 import { 
   updateInstructions,
-  createOrUpdatePanel,
   hideInactivePanels 
 } from './ui.js';
 
@@ -235,6 +234,7 @@ export async function detect() {
 
     // Procesar la planta detectada
     if (bestPlant.length > 0) {
+      STATE.detectedOnce = true;
       const plant = bestPlant[0];
       const plantIndex = 0;
       STATE.detectedOnce = true;
@@ -246,9 +246,6 @@ export async function detect() {
       const label = plant.class;
       drawBoundingBox(plant.bbox, label);
 
-      // Crear/actualizar panel de datos (se rellenará con el evento activo)
-      createOrUpdatePanel(plantIndex, plant.bbox, plant.score, null);
-      activePanels.add(plantIndex);
     }
 
     // Mantener paneles visibles aunque no se detecten
@@ -256,7 +253,6 @@ export async function detect() {
       const timeSinceLastSeen = now - lastSeen;
       
       if (timeSinceLastSeen < PANEL_PERSIST_TIME) {
-        activePanels.add(plantIndex);
       } else {
         plantLastSeen.delete(plantIndex);
       }
