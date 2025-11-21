@@ -127,8 +127,8 @@ export async function loadModel() {
     }
     
     if (statusElement) {
-      statusElement.textContent = '✓ IA lista - Buscando plantas...';
-      statusElement.classList.add('detecting');
+      statusElement.textContent = '🔍 Buscando plantas...';
+      statusElement.classList.remove('detecting');
     }
     
     log(`✓ Modelo COCO-SSD cargado correctamente (${modelConfig.base})`);

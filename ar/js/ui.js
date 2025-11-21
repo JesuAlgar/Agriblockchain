@@ -82,17 +82,20 @@ export function showAlert(message, type = 'danger') {
  */
 export function updateInstructions(plantCount) {
   const instructions = document.getElementById('instructions');
-  if (!instructions) return;
-  
+  const status = document.getElementById('status');
+
   if (plantCount === 0) {
-    instructions.textContent = '🔍 Buscando plantas...';
-    instructions.classList.remove('success');
+    if (status) status.textContent = '🔍 Buscando plantas...';
+    if (instructions) instructions.textContent = '';
+    if (instructions) instructions.classList.remove('success');
   } else if (plantCount === 1) {
-    instructions.textContent = '✅ Planta detectada';
-    instructions.classList.add('success');
+    if (status) status.textContent = '✅ Planta detectada';
+    if (instructions) instructions.textContent = '';
+    if (instructions) instructions.classList.add('success');
   } else {
-    instructions.textContent = `✅ ${plantCount} plantas detectadas`;
-    instructions.classList.add('success');
+    if (status) status.textContent = `✅ ${plantCount} plantas detectadas`;
+    if (instructions) instructions.textContent = '';
+    if (instructions) instructions.classList.add('success');
   }
 }
 
@@ -875,7 +878,7 @@ function tryWebkitFullscreen(elem) {
 function updateFullscreenButton(isFullscreen) {
   const btn = document.getElementById('btnFullscreen');
   if (btn) {
-    btn.textContent = isFullscreen ? 'Salir Fullscreen' : 'Fullscreen';
+    btn.textContent = isFullscreen ? '⤢' : '⛶';
     btn.title = isFullscreen ? 'Salir de pantalla completa' : 'Pantalla completa';
   }
 }
