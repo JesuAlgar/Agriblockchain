@@ -524,17 +524,18 @@ function positionPanel(panel, bbox) {
  * Oculta y elimina paneles inactivos
  */
 export function hideInactivePanels(activePanelIndices) {
-  document.querySelectorAll('.data-panel').forEach(panel => {
+  const panels = document.querySelectorAll('.data-panel');
+  panels.forEach(panel => {
     const panelIndex = parseInt(panel.id.split('-')[1]);
-    if (Number.isNaN(panelIndex)) return;
-    if (panelIndex !== 0 || !activePanelIndices.has(panelIndex)) {
+    const shouldHide = !STATE.showPanel || Number.isNaN(panelIndex) || !activePanelIndices.has(panelIndex);
+    if (shouldHide) {
       panel.classList.remove('visible');
       setTimeout(() => {
-        if (!panel.classList.contains('visible') && !hasHistoryEvents()) {
+        if (!STATE.showPanel || (!panel.classList.contains('visible') && !hasHistoryEvents())) {
           panel.remove();
           showPanelPlaceholder();
         }
-      }, 500);
+      }, 200);
     }
   });
 }
