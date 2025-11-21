@@ -413,6 +413,7 @@ function scheduleHistoryLoadOnDetection(plantId) {
   const wait = () => {
     if (STATE.history.loadedOnce) return;
     if (STATE.detectionCount > 0) {
+      STATE.detectedOnce = true;
       STATE.history.loadedOnce = true;
       loadHistoryForPlant(plantId, { force: true });
       return;

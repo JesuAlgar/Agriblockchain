@@ -783,6 +783,7 @@ export function showTxHashBanner(hash) {
 
 export function showHistoryEventInPanel(event) {
   if (!event || !event.data) return;
+  if (!STATE.detectedOnce) return;
   const host = STATE.panelRegion || STATE.container || document.body;
   let panel = host ? host.querySelector('.data-panel') : document.querySelector('.data-panel');
   if (!panel) {
