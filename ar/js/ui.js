@@ -471,38 +471,8 @@ function updateEventDetails(panel) {
  * ✨ MEJORADO: Crea o actualiza el panel de datos de una planta
  */
 export function createOrUpdatePanel(plantIndex, bbox, confidence, data) {
-  if (!STATE.detectedOnce || !STATE.showPanel) {
-    showPanelPlaceholder();
-    const existing = document.getElementById(`panel-${plantIndex}`);
-    if (existing) existing.remove();
-    return null;
-  }
-
-  const activeData = getSelectedEventData();
-  if (!activeData) {
-    showPanelPlaceholder();
-    const existing = document.getElementById(`panel-${plantIndex}`);
-    if (existing) existing.remove();
-    return null;
-  }
-
-  const panelId = `panel-${plantIndex}`;
-  let panel = document.getElementById(panelId);
-  if (!panel) {
-    panel = createPanelStructure(panelId);
-    const host = STATE.panelRegion || STATE.container;
-    if (STATE.panelRegion) {
-      const placeholder = STATE.panelRegion.querySelector('.data-panel-placeholder');
-      if (placeholder) placeholder.remove();
-    }
-    host.appendChild(panel);
-  }
-
-  updatePanelValues(panel, activeData, confidence, plantIndex);
-  positionPanel(panel, bbox);
-  if (!panel.classList.contains('visible')) panel.classList.add('visible');
-  checkPanelScroll(panel);
-  return panel;
+  // Deshabilitado: el panel de datos via detección no se muestra.
+  return null;
 }
 
 /**
