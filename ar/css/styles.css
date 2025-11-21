@@ -273,36 +273,32 @@ body.is-fullscreen .header {
    ============================================ */
 
 .data-panel {
-  width: 100%;
-  max-width: 360px;
-  background: rgba(5, 10, 15, 0.65);
-  backdrop-filter: blur(14px);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 16px;
-  padding: 12px;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
-  margin: 0 auto 12px;
+  width: 340px;
+  max-width: 340px;
+  background: transparent;
+  backdrop-filter: none;
+  border: none;
+  border-radius: 0;
+  padding: 8px 12px;
+  box-shadow: none;
+  margin: 0;
   opacity: 1;
   transform: none;
   transition: none;
   z-index: auto;
 }
 
-.data-panel.floating {
+.data-panel.floating,
+#panelRegion .data-panel {
   position: fixed;
-  top: 80px;
+  top: 70px;
   right: 12px;
-  max-height: calc(100vh - 120px);
+  max-height: calc(100vh - 140px);
   overflow-y: auto;
-  opacity: 0;
-  transform: translateX(20px);
-  transition: all 0.3s ease;
-  z-index: 1000;
-}
-
-.data-panel.floating.visible {
   opacity: 1;
-  transform: translateX(0);
+  transform: none;
+  transition: none;
+  z-index: 1000;
 }
 
 /* ✨ SCROLLBAR PERSONALIZADA */
@@ -656,17 +652,17 @@ body.is-fullscreen .header {
 }
 
 .data-panel-slot {
-  flex: 1;
-  min-width: 280px;
+  flex: 0 0 auto;
+  min-width: 0;
 }
 
 .data-panel-placeholder {
-  background: rgba(5, 10, 15, 0.6);
-  border-radius: 12px;
-  padding: 20px;
+  background: transparent;
+  border-radius: 0;
+  padding: 0;
   text-align: center;
   color: var(--muted);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: none;
 }
 
 @media (max-width: 1024px) {
