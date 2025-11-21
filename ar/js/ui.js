@@ -393,10 +393,21 @@ function renderGeneralFields(panel, data, confidence, plantIndex) {
 function updatePanelValues(panel, data, confidence, plantIndex) {
   const baseHistory = data.__eventHistory || {};
   const history = { ...(panel._eventSnapshots || {}), ...baseHistory };
+
+  // Inyectar histórico on-chain ya cargado para este batch
+  const currentBatch = data.batchId || data.plantId || STATE.history?.plantId;
+  if (Array.isArray(STATE.history?.events) && currentBatch) {
+    STATE.history.events
+      .filter(evt => (evt.plantId || '').toLowerCase() === currentBatch.toLowerCase())
+      .forEach(evt => {
+        const type = (evt.eventType || `${evt.shortType}_EVENT`).toUpperCase();
+        const payload = normalizeEventPayload(evt);
+        history[type] = payload;
+      });
+  }
+
   if (data.eventType) {
     history[data.eventType] = data;
-  }
-  if (data.eventType) {
     panel.dataset.activeEvent = data.eventType;
   }
   panel._eventSnapshots = history;

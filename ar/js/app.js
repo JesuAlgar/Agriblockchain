@@ -21,7 +21,7 @@ async function init() {
     STATE.history.pendingEventId = getEventIdFromURL() || null;
     subscribeHistory((state) => {
       renderHistoryTimeline(state);
-      if (state.selectedEvent) {
+      if (STATE.detectionCount > 0 && state.selectedEvent) {
         showHistoryEventInPanel(state.selectedEvent);
       }
     });
