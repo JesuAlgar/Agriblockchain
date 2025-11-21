@@ -123,7 +123,17 @@ function wireUI() {
   const historyWrapper = byId('historyWrapper');
   if (btnToggleHistory && historyWrapper) {
     btnToggleHistory.addEventListener('click', () => {
-      historyWrapper.classList.toggle('hidden');
+      const nowHidden = historyWrapper.classList.toggle('hidden');
+      if (nowHidden) {
+        STATE.showPanel = false;
+        document.querySelectorAll('.data-panel').forEach(el => el.remove());
+      } else {
+        STATE.showPanel = true;
+        const selected = STATE.history && STATE.history.selectedEvent;
+        if (selected) {
+          showHistoryEventInPanel(selected);
+        }
+      }
     });
   }
 }
