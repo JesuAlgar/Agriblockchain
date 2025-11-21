@@ -15,6 +15,7 @@ import { STATE, getPlantIdFromURL, setPlantIdInURL, getEventIdFromURL, setEventI
 async function init() {
   try {
     log('=== Iniciando AR Planta IA ===');
+    document.querySelectorAll('.data-panel').forEach(el => el.remove());
     const params = new URLSearchParams(location.search);
     const debug = params.get('debug') === '1';
     initHistoryModule({ debug });

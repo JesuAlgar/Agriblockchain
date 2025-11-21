@@ -785,17 +785,16 @@ export function showTxHashBanner(hash) {
 export function showHistoryEventInPanel(event) {
   if (!event || !event.data) return;
   if (!STATE.detectedOnce) return;
+  const host = STATE.panelRegion;
+  if (!host) return;
   STATE.showPanel = true;
-  const host = STATE.panelRegion || STATE.container || document.body;
-  let panel = host ? host.querySelector('.data-panel') : document.querySelector('.data-panel');
+  let panel = host.querySelector('.data-panel');
   if (!panel) {
     panel = createPanelStructure('panel-history');
-    if (host) host.appendChild(panel);
+    host.appendChild(panel);
   }
-  if (host) {
-    const placeholder = host.querySelector('.data-panel-placeholder');
-    if (placeholder) placeholder.remove();
-  }
+  const placeholder = host.querySelector('.data-panel-placeholder');
+  if (placeholder) placeholder.remove();
 
   const normalizedType = (event.eventType || `${event.shortType}_EVENT` || 'HARVEST_EVENT').toUpperCase();
   const payload = normalizeEventPayload(event);
