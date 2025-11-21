@@ -328,6 +328,7 @@ function attachEventToggleHandlers(panel) {
   const buttons = panel.querySelectorAll('[data-event-view]');
   buttons.forEach(btn => {
     btn.addEventListener('click', () => {
+      panel.dataset.userSelected = btn.dataset.eventView;
       panel.dataset.activeEvent = btn.dataset.eventView;
       updateEventDetails(panel);
     });
@@ -408,15 +409,10 @@ function updatePanelValues(panel, data, confidence, plantIndex) {
 
   if (data.eventType) {
     history[data.eventType] = data;
-    panel.dataset.activeEvent = data.eventType;
   }
   panel._eventSnapshots = history;
   panel._confidence = confidence;
   panel._plantIndex = plantIndex;
-
-  if (!panel.dataset.activeEvent || !history[panel.dataset.activeEvent]) {
-    panel.dataset.activeEvent = Object.keys(history)[0] || 'HARVEST_EVENT';
-  }
 
   updateEventDetails(panel);
 }
@@ -425,19 +421,24 @@ function updateEventDetails(panel) {
   const container = panel.querySelector('[data-event-details]');
   if (!container) return;
   const snapshots = panel._eventSnapshots || {};
-  let active = panel.dataset.activeEvent || Object.keys(snapshots)[0];
+  const buttons = panel.querySelectorAll('[data-event-view]');
+
+  let active = panel.dataset.userSelected;
   if (!active || !snapshots[active]) {
-    active = Object.keys(snapshots)[0];
+    active = panel.dataset.activeEvent && snapshots[panel.dataset.activeEvent]
+      ? panel.dataset.activeEvent
+      : null;
   }
-  if (!active) {
-    container.innerHTML = '<div class="event-details-row">No hay eventos registrados.</div>';
+  panel.dataset.activeEvent = active || '';
+
+  if (!active || !snapshots[active]) {
+    container.innerHTML = '<div class="event-details-row">Selecciona un evento</div>';
+    buttons.forEach(btn => btn.classList.toggle('active', false));
     return;
   }
-  panel.dataset.activeEvent = active;
 
   const selectedData = snapshots[active];
 
-  const buttons = panel.querySelectorAll('[data-event-view]');
   buttons.forEach(btn => {
     btn.classList.toggle('active', btn.dataset.eventView === active);
   });
@@ -790,6 +791,7 @@ export function showHistoryEventInPanel(event) {
   panel._eventSnapshots = panel._eventSnapshots || {};
   panel._eventSnapshots[normalizedType] = payload;
   panel.dataset.activeEvent = normalizedType;
+  panel.dataset.userSelected = normalizedType;
   panel._confidence = 1;
   panel._plantIndex = 0;
   renderGeneralFields(panel, payload, 1, 0);
