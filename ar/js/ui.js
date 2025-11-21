@@ -487,25 +487,15 @@ export function createOrUpdatePanel(plantIndex, bbox, confidence, data) {
  * Posiciona el panel en la esquina superior derecha (fijo)
  */
 function positionPanel(panel, bbox) {
-  if (STATE.panelRegion) {
-    panel.classList.remove('floating');
-    panel.style.position = 'static';
-    panel.style.top = panel.style.right = panel.style.left = panel.style.bottom = 'auto';
-    panel.style.maxWidth = '100%';
-    panel.style.maxHeight = 'none';
-    panel.style.overflow = 'visible';
-    return;
-  }
-
   panel.classList.add('floating');
   panel.style.position = 'fixed';
   panel.style.top = '80px';
-  panel.style.right = '10px';
+  panel.style.right = '16px';
   panel.style.left = 'auto';
   panel.style.bottom = 'auto';
   panel.style.transform = 'none';
-  panel.style.maxWidth = '280px';
-  panel.style.maxHeight = 'calc(100vh - 100px)';
+  panel.style.maxWidth = '360px';
+  panel.style.maxHeight = 'calc(100vh - 120px)';
   panel.style.overflowY = 'auto';
   panel.style.overflowX = 'hidden';
 }
