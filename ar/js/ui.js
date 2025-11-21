@@ -468,6 +468,13 @@ function updateEventDetails(panel) {
  * ✨ MEJORADO: Crea o actualiza el panel de datos de una planta
  */
 export function createOrUpdatePanel(plantIndex, bbox, confidence, data) {
+  if (!STATE.detectedOnce) {
+    showPanelPlaceholder();
+    const existing = document.getElementById(`panel-${plantIndex}`);
+    if (existing) existing.remove();
+    return null;
+  }
+
   const activeData = getSelectedEventData();
   if (!activeData) {
     showPanelPlaceholder();
@@ -499,6 +506,7 @@ export function createOrUpdatePanel(plantIndex, bbox, confidence, data) {
  * Posiciona el panel en la esquina superior derecha (fijo)
  */
 function positionPanel(panel, bbox) {
+  if (!STATE.detectedOnce) return;
   panel.classList.add('floating');
   panel.style.position = 'fixed';
   panel.style.top = '80px';

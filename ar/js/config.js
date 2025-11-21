@@ -198,6 +198,7 @@ export const STATE = {
   stream: null, // â­ NUEVO: Stream de video
   lastDetectionTime: 0,
   detectionCount: 0,
+  detectedOnce: false,
   alertShown: new Set(),
   panelRegion: null,
   

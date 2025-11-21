@@ -237,6 +237,7 @@ export async function detect() {
     if (bestPlant.length > 0) {
       const plant = bestPlant[0];
       const plantIndex = 0;
+      STATE.detectedOnce = true;
 
       // Actualizar timestamp
       plantLastSeen.set(plantIndex, now);
