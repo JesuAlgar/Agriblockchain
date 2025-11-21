@@ -258,8 +258,10 @@ export async function detect() {
       }
     });
 
-    // Ocultar paneles inactivos
-    hideInactivePanels(activePanels);
+    // Ocultar paneles inactivos solo si no se ha abierto el panel manual (history)
+    if (!STATE.showPanel) {
+      hideInactivePanels(activePanels);
+    }
 
   } catch (err) {
     log(`Error en detección : ${err.message}`, 'error');
