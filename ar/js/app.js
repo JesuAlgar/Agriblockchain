@@ -225,6 +225,9 @@ function generateUlid() {
 }
 
 function handleNewPlant() {
+  const confirmNew = window.confirm('¿Generar un nuevo batch y reemplazar el de la URL actual?');
+  if (!confirmNew) return;
+
   const newId = generateUlid();
 
   const rawEvent = prompt('eventId (opcional)', getEventIdFromURL() || '');
