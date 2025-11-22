@@ -15,6 +15,7 @@ import { STATE, getPlantIdFromURL, setPlantIdInURL, getEventIdFromURL, setEventI
 async function init() {
   try {
     log('=== Iniciando AR Planta IA ===');
+    detectBrowser();
     document.querySelectorAll('.data-panel').forEach(el => el.remove());
     const params = new URLSearchParams(location.search);
     const debug = params.get('debug') === '1';
@@ -146,6 +147,17 @@ function updateZoomIndicator() {
   if (!indicator) return;
   const z = getCurrentZoom();
   indicator.textContent = `Zoom: ${Number(z).toFixed(1)}x`;
+}
+
+function detectBrowser() {
+  if (typeof navigator === 'undefined') return;
+  const ua = navigator.userAgent || '';
+  const vendor = navigator.vendor || '';
+  const isSafari = /safari/i.test(ua) && !/chrome|android/i.test(ua) && /apple/i.test(vendor || 'apple');
+  const isFirefox = /firefox/i.test(ua);
+  const isChrome = /chrome/i.test(ua) && !/edg|opr|brave/i.test(ua);
+  STATE.browser = { isSafari, isFirefox, isChrome };
+  STATE.forceSimulatedFullscreen = !!isSafari;
 }
 
 // --------------------------------------------

@@ -49,7 +49,14 @@ export const CONFIG = {
       'herb',          // Plantas de hierba
       'flower',        // Flores grandes
       'ivy',           // Hiedra
-      'climbing plant' // Plantas trepadoras
+      'climbing plant', // Plantas trepadoras
+
+      // üçé Frutas (detectables con COCO-SSD)
+      'apple',
+      'banana',
+      'orange',
+      'broccoli',
+      'carrot'
     ],
     
     // ‚≠ê NUEVO: Umbral m√≠nimo de confianza (0-1)
@@ -65,7 +72,7 @@ export const CONFIG = {
     alertCooldown: 30000
   },
   
-  // ConfiguraciÛn blockchain (estado actual)
+  // Configuracin blockchain (estado actual)
   blockchain: {
     mode: 'BLOCKCHAIN',
     network: {
@@ -104,10 +111,10 @@ export const CONFIG = {
     ]
   },
   
-  // Contrato de histÛrico (eventos append-only)
+  // Contrato de histrico (eventos append-only)
   events: {
-    contractAddress: '0x448cA21baca3954a1bF428bfe1f0C9bBbdC51673',
-    deploymentBlock: 9668400,
+    contractAddress: '0x5D49397b2e41b1bd3a9f03D6e2d564E7F5171650',
+    deploymentBlock: 9682238,
     abi: [
       {
         "anonymous": false,
@@ -199,6 +206,12 @@ export const STATE = {
   lastDetectionTime: 0,
   detectionCount: 0,
   detectedOnce: false,
+  browser: {
+    isSafari: false,
+    isFirefox: false,
+    isChrome: false
+  },
+  forceSimulatedFullscreen: false,
   showPanel: false,
   alertShown: new Set(),
   panelRegion: null,

@@ -85,15 +85,15 @@ export function updateInstructions(plantCount) {
   const status = document.getElementById('status');
 
   if (plantCount === 0) {
-    if (status) status.textContent = '🔍 Buscando plantas...';
+    if (status) status.textContent = '🔍 Buscando plantas o frutos...';
     if (instructions) instructions.textContent = '';
     if (instructions) instructions.classList.remove('success');
   } else if (plantCount === 1) {
-    if (status) status.textContent = '✅ Planta detectada';
+    if (status) status.textContent = '✅ Planta o fruto detectado';
     if (instructions) instructions.textContent = '';
     if (instructions) instructions.classList.add('success');
   } else {
-    if (status) status.textContent = `✅ ${plantCount} plantas detectadas`;
+    if (status) status.textContent = `✅ ${plantCount} plantas/frutos detectados`;
     if (instructions) instructions.textContent = '';
     if (instructions) instructions.classList.add('success');
   }
@@ -527,6 +527,14 @@ export function toggleTheme() {
 export function toggleFullscreen() {
   const d = document;
   const elements = [d.documentElement, d.body, d.getElementById('container')];
+
+  const forceSim = STATE.forceSimulatedFullscreen || STATE.browser?.isSafari;
+  if (forceSim) {
+    const simActive = document.body.classList.contains('simulated-fullscreen');
+    simulateFullscreen(!simActive);
+    updateFullscreenButton(!simActive);
+    return;
+  }
 
   const isFS = !!(d.fullscreenElement || d.webkitFullscreenElement || d.mozFullScreenElement || d.msFullscreenElement);
   console.log('[Fullscreen] Estado actual:', isFS ? 'Activado' : 'Desactivado');

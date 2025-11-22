@@ -127,7 +127,7 @@ export async function loadModel() {
     }
     
     if (statusElement) {
-      statusElement.textContent = '🔍 Buscando plantas...';
+      statusElement.textContent = '🔍 Buscando plantas o frutos...';
       statusElement.classList.remove('detecting');
     }
     
