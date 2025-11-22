@@ -111,6 +111,9 @@ function wireUI() {
     onLoadMore: () => showMoreHistory(),
     onSelectEvent: (key) => {
       STATE.showPanel = true;
+      STATE.panelMode = 'pop';
+      const historyWrapper = document.getElementById('historyWrapper');
+      if (historyWrapper) historyWrapper.classList.add('hidden');
       selectHistoryEvent(key);
     },
     onChangePlantId: (newId) => {
@@ -124,15 +127,15 @@ function wireUI() {
   if (btnToggleHistory && historyWrapper) {
     btnToggleHistory.addEventListener('click', () => {
       const nowHidden = historyWrapper.classList.toggle('hidden');
-      if (nowHidden) {
+      if (!nowHidden) {
+        // Mostrar solo la info de carpeta, ocultar pop
         STATE.showPanel = false;
+        STATE.panelMode = 'history';
         document.querySelectorAll('.data-panel').forEach(el => el.remove());
       } else {
-        STATE.showPanel = true;
-        const selected = STATE.history && STATE.history.selectedEvent;
-        if (selected) {
-          showHistoryEventInPanel(selected);
-        }
+        // Ocultaste la carpeta; no mostrar nada hasta que elijas evento
+        STATE.panelMode = 'none';
+        STATE.showPanel = false;
       }
     });
   }

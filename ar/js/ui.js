@@ -761,6 +761,7 @@ export function showHistoryEventInPanel(event) {
   const host = STATE.panelRegion;
   if (!host) return;
   STATE.showPanel = true;
+  STATE.panelMode = 'pop';
   let panel = host.querySelector('.data-panel');
   if (!panel) {
     panel = createPanelStructure('panel-history');
