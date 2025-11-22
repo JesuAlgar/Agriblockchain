@@ -772,8 +772,18 @@ export function showHistoryEventInPanel(event) {
 
   const normalizedType = (event.eventType || `${event.shortType}_EVENT` || 'HARVEST_EVENT').toUpperCase();
   const payload = normalizeEventPayload(event);
-  panel._eventSnapshots = panel._eventSnapshots || {};
-  panel._eventSnapshots[normalizedType] = payload;
+  const batchId = (payload.batchId || '').toLowerCase();
+  const snapshots = {};
+  if (Array.isArray(STATE.history?.events)) {
+    STATE.history.events
+      .filter(evt => (evt.plantId || '').toLowerCase() === batchId)
+      .forEach(evt => {
+        const t = (evt.eventType || `${evt.shortType}_EVENT`).toUpperCase();
+        snapshots[t] = normalizeEventPayload(evt);
+      });
+  }
+  snapshots[normalizedType] = payload;
+  panel._eventSnapshots = snapshots;
   panel.dataset.activeEvent = normalizedType;
   panel.dataset.userSelected = normalizedType;
   panel._confidence = 1;
