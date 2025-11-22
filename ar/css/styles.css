@@ -106,11 +106,6 @@ body.simulated-fullscreen {
   backdrop-filter: none;
 }
 
-/* Ocultar cabecera en modo pantalla completa (nativo o simulado) */
-body.is-fullscreen .header {
-  display: none !important;
-}
-
 .header-info h1 {
   font-size: 20px;
   font-weight: 600;
