@@ -458,7 +458,7 @@ body.simulated-fullscreen {
 .history-wrapper {
   width: 100%;
   max-width: 420px;
-  margin-top: 32px;
+  margin-top: 56px;
   padding: 12px;
   backdrop-filter: blur(12px);
   background: rgba(5, 10, 15, 0.75);
@@ -468,7 +468,7 @@ body.simulated-fullscreen {
   display: flex;
   flex-direction: column;
   gap: 10px;
-  max-height: calc(100vh - 200px);
+  max-height: calc(100vh - 240px);
   overflow: hidden;
 }
 
