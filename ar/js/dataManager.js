@@ -286,8 +286,11 @@ async function getSignerAndContract() {
         log('[Blockchain] Advertencia al verificar/cambiar red: ' + err.message, 'warn');
       }
 
-      // Solicitar cuentas
-      await window.ethereum.request({ method: 'eth_requestAccounts' });
+      // Solicitar cuentas (sin prompt si ya está conectada)
+      const accounts = await window.ethereum.request({ method: 'eth_accounts' });
+      if (!accounts || !accounts.length) {
+        await window.ethereum.request({ method: 'eth_requestAccounts' });
+      }
       // Envolver en ethers
       web3Provider = new ethers.BrowserProvider(window.ethereum, 'any');
       STATE.blockchainProvider = window.ethereum;

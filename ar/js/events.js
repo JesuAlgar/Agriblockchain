@@ -11,6 +11,7 @@ const CACHE_PREFIX = 'agri:history';
 const RANGE_BLOCKS = 10000;
 const DEFAULT_VISIBLE = 50;
 const subscribers = new Set();
+let writableProviderCache = null;
 const ABI_CODER = ethers.AbiCoder.defaultAbiCoder();
 
 function resolveEventsContractAddress() {
@@ -341,12 +342,19 @@ function getReadProvider() {
 async function getWritableProvider() {
   const base = await ensureWalletProvider();
   if (!base) throw new Error('No hay wallet conectada');
+  if (writableProviderCache) return writableProviderCache;
+
   const provider = new ethers.BrowserProvider(window.ethereum, 'any');
-  await provider.send('eth_requestAccounts', []);
+  // Intentar sin prompt primero
+  const accounts = await provider.send('eth_accounts', []);
+  if (!accounts || !accounts.length) {
+    await provider.send('eth_requestAccounts', []);
+  }
   const network = await provider.getNetwork();
   if (Number(network.chainId) !== Number(CONFIG.blockchain.network.chainId)) {
     throw new Error('Wallet conectada en red distinta. Cambia a Sepolia y reintenta.');
   }
+  writableProviderCache = provider;
   return provider;
 }
 
