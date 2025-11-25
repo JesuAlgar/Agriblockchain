@@ -167,7 +167,7 @@ function openSaveModal() {
   // Relleno automático básico
   const set = (id, v) => { const el = document.getElementById(id); if (el) el.value = v; };
   set('f_eventId', generateUlid());
-  set('f_batchId', generateUlid());
+  set('f_batchId', getPlantIdFromURL() || generateUlid());
   set('f_timestamp', new Date().toISOString());
   set('f_lotCode', 'LOT-' + new Date().getFullYear());
   set('f_eventType', 'HARVEST_EVENT');
